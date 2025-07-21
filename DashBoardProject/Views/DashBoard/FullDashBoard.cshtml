@@ -1,0 +1,465 @@
+﻿@using DashBoardProject.Models
+@model FullDashBoardModel
+
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8" />
+    <title>Maliyyə Balansları</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f3f3f3;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        form {
+            text-align: center;
+            margin-bottom: 30px;
+            background-color: #fff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+
+            form label {
+                margin: 0 10px 0 0;
+                font-weight: 600;
+                color: #333;
+            }
+
+            form input[type="date"] {
+                margin-right: 20px;
+                padding: 5px 8px;
+                border-radius: 5px;
+                border: 1px solid #ccc;
+                font-size: 14px;
+                outline-offset: 2px;
+                transition: border-color 0.3s ease;
+            }
+
+                form input[type="date"]:focus {
+                    border-color: #4CAF50;
+                    outline: none;
+                }
+
+            form button {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 7px 18px;
+                font-weight: 600;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+                form button:hover {
+                    background-color: #45a049;
+                }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 700;
+            color: #222;
+        }
+
+        .Main-Container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            max-width: 1380px;
+            margin: 0 auto 50px auto;
+            padding: 20px 10px;
+            background-color: #6c757d30;
+            border-radius: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 260px;
+            height: 380px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            padding: 15px 20px 25px 20px;
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+            .chart-container:hover {
+                transform: scale(1.03);
+            }
+
+        .chart-title {
+            font-weight: bold;
+            font-size: 17px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #222;
+            width: 100%;
+        }
+
+        .center-value {
+            position: absolute;
+            top: 55%;
+            left: 50%;
+            transform: translate(-50%, -60%);
+            font-size: 26px;
+            font-weight: 700;
+            pointer-events: none;
+            color: #222;
+        }
+
+
+
+        .sigorta-container {
+            height: 420px !important;
+            width: 260px !important;
+        }
+
+        .nowrap-legend {
+            white-space: nowrap;
+            flex-wrap: nowrap;
+        }
+        
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* buradan da az-az məsafə olur, amma margin-bottom də faydalıdır */
+            margin-top: 25px;
+            font-size: 15px;
+            color: #444;
+            text-align: left;
+            width: 100%;
+            padding-left: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px; /* Kategoryalar arasında məsafə */
+        }
+
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+
+        .legend-color {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        #XidmetKateqoriyaLegend {
+            max-height: 200px; /* İstədiyin hündürlüyü ver */
+            overflow-y: auto; /* Dikey scroll */
+            padding-right: 10px; /* Scroll ilə yazılar arasında məsafə */
+        }
+
+
+
+
+
+    </style>
+
+
+
+    </style>
+</head>
+<body>
+
+    <form asp-action="FullDashBoard" method="get" novalidate style="margin-left:90px">
+        <label for="start">Başlanğıc tarixi:</label>
+        <input type="date" id="start" name="startDate" required
+               value="@(ViewBag.StartDate ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+
+        <label for="end">Bitmə tarixi:</label>
+        <input type="date" id="end" name="endDate" required
+               value="@(ViewBag.EndDate ?? DateTime.Today.ToString("yyyy-MM-dd"))" />
+
+        <button type="submit">Tətbiq et</button>
+    </form>
+
+
+    <h2>Maliyyə Hərəkətləri</h2>
+
+    <div class="Main-Container">
+        <div class="chart-container">
+            <div class="chart-title">İlkin Qalıq </div>
+            <canvas id="ilkqaliqChart"></canvas>
+            <div class="center-value" id="ilkqaliqValue">0</div>
+            <div class="legend" id="ilkqaliqLegend"></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Mədaxil</div>
+            <canvas id="onlyDebitChart"></canvas>
+            <div class="center-value" id="onlyDebitValue">0</div>
+            <div class="legend" id="onlyDebitLegend"></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Məxaric</div>
+            <canvas id="onlyCreditChart"></canvas>
+            <div class="center-value" id="onlyCreditValue">0</div>
+            <div class="legend" id="onlyCreditLegend"></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Sona Qalıq</div>
+            <canvas id="sonqaliqChart"></canvas>
+            <div class="center-value" id="sonqaliqValue">0</div>
+            <div class="legend" id="sonqaliqLegend"></div>
+        </div>
+    </div>
+    
+    <h2>Dövriyyə Statistikası</h2>
+
+    <div class="Main-Container">
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Təşkilat üzrə</div>
+            <canvas id="SigortaChart"></canvas>
+            <div class="center-value" id="SigortValue">0</div>
+            <div class="legend" id="SigortaLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Xidmət tipi üzrə</div>
+            <canvas id="XidmetChart"></canvas>
+            <div class="center-value" id="XidmetValue">0</div>
+            <div class="legend" id="XidmetLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Maliyyə üzrə</div>
+            <canvas id="SigortaChart"></canvas>
+            <div class="center-value" id="SigortValue">0</div>
+            <div class="legend" id="SigortaLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Xidmət kateqoryası üzrə</div>
+            <canvas id="XidmetKateqoriyaChart"></canvas>
+            <div class="center-value" id="XidmetKateqoriyaValue">0</div>
+            <div class="legend" id="XidmetKateqoriyaLegend"></div>
+        </div>
+    </div>
+
+    <h2>Mal-material hərəkəti</h2>
+
+    <div class="Main-Container">
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">İlkin Qalıq</div>
+            <canvas id="MaterialChart"></canvas>
+            <div class="center-value" id="MaterialValue">0</div>
+            <div class="legend" id="MaterialLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Mədaxil</div>
+            <canvas id="MedaxilChart"></canvas>
+            <div class="center-value" id="MedaxilValue">0</div>
+            <div class="legend" id="MedaxilLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Məxaric</div>
+            <canvas id="MexaricChart"></canvas>
+            <div class="center-value" id="MexaricValue">0</div>
+            <div class="legend" id="MexaricLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Silinmə</div>
+            <canvas id="SilinmeChart"></canvas>
+            <div class="center-value" id="SilinmeValue">0</div>
+            <div class="legend" id="SilinmeLegend"></div>
+        </div>
+        <div class="chart-container sigorta-container">
+            <div class="chart-title">Sona Qalıq</div>
+            <canvas id="QaliqChart"></canvas>
+            <div class="center-value" id="QaliqValue">0</div>
+            <div class="legend" id="QaliqLegend"></div>
+        </div>
+    </div>
+
+    @{
+        var xidmetKateqoriyalar = Model.Dovriyye?.Xidmet_Categoryasi ?? new List<Xidmet_Categoryasi>();
+        var xidmetLabels = xidmetKateqoriyalar.Select(x => x.CategoryName).ToList();
+        var xidmetData = xidmetKateqoriyalar.Select(x => x.TotalPrice).ToList();
+    }
+
+
+    <script>
+            console.log("Model:", @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model)));
+
+            const ilkinQaliqBank = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.IlkinQaliq.Bank ?? 0));
+            const ilkinQaliqKassa = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.IlkinQaliq.Kassa ?? 0));
+
+            const debitBank = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.Medaxil?.Bank ?? 0));
+            const debitKassa = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.Medaxil?.Kassa ?? 0));
+
+            const creditBank = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.Mexaric?.Bank ?? 0));
+            const creditKassa = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.Mexaric?.Kassa ?? 0));
+
+            const sonQaliqBank = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.SonQaliq?.Bank ?? 0));
+            const sonQaliqKassa = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.SonQaliq?.Kassa ?? 0));
+
+            const Icbari_Sigorta = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Icbari_Sigorta ?? 0));
+            const Diger_Sigorta = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Diger_Sigorta ?? 0));
+            const EndirimLer = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Endirimler ?? 0));
+            const Oz_Hesabina = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Oz_Hesabina ?? 0));
+
+            const Xidmet_tipi_Emeliyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.XidmetTipi?.Emeliyyat ?? 0));
+            const Xidmet_tipi_Poliklinik = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.XidmetTipi?.Poliklinik ?? 0));
+
+            const xidmetCategoryLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(@xidmetLabels));
+            const xidmetCategoryData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(@xidmetData));
+
+            const IlkinQaliqDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Derman ?? 0));
+            const IlkinQaliqTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Teserrufat ?? 0));
+            const IlkinQaliqInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Inventor ?? 0));
+
+            const MedaxilDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Derman ?? 0));
+            const MedaxilTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Teserrufat ?? 0));
+            const MedaxilInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Inventor ?? 0));
+
+            const MexaricDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Derman ?? 0));
+            const MexaricTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Teserrufat ?? 0));
+            const MexaricInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Inventor ?? 0));
+
+            const SilinmeDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Derman ?? 0));
+            const SilinmeTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Teserrufat ?? 0));
+            const SilinmeInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Inventor ?? 0));
+
+            const SonQaliqDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Derman ?? 0));
+            const SonQaliqTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Teserrufat ?? 0));
+            const SonQaliqInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Inventor ?? 0));
+
+            function animateValue(id, start, end, duration) {
+                const obj = document.getElementById(id);
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    const value = Math.floor(progress * (end - start) + start);
+                    obj.innerText = value.toLocaleString();
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            }
+
+            function updateLegend(containerId, labels, data, colors) {
+                const legendContainer = document.getElementById(containerId);
+                legendContainer.innerHTML = "";
+                for (let i = 0; i < labels.length; i++) {
+                    const item = document.createElement("div");
+                    item.className = `legend-item ${containerId === "MaterialLegend" ? "nowrap-legend" : ""}`;
+                    item.innerHTML = `
+                        <span class="legend-color" style="background-color:${colors[i]}"></span>
+                        ${labels[i]} – ${data[i].toLocaleString()}
+                    `;
+                    legendContainer.appendChild(item);
+                }
+            }
+
+            function createChart(canvasId, valueId, legendId, labels, data, colors) {
+                new Chart(document.getElementById(canvasId), {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        rotation: -90,
+                        circumference: 180,
+                        cutout: '70%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
+                        }
+                    }
+                });
+
+                const total = data.reduce((a, b) => a + b, 0);
+                animateValue(valueId, 0, total, 1000);
+                updateLegend(legendId, labels, data, colors);
+            }
+
+            const commonColors = ['#4CAF50', '#FFC107'];
+            const sigortaColors = ['#3F51B5', '#E91E63', '#009688', '#FFC107'];
+            const materialColors = ['#8e44ad', '#2980b9', '#27ae60'];
+            const xidmetCategoryColors = ['#FF6384', '#36A2EB', '#FFCE56', '#8BC34A', '#FF9800']; // 5 fərqli rəng
+
+            createChart('ilkqaliqChart', 'ilkqaliqValue', 'ilkqaliqLegend', ['Bank', 'Kassa'], [ilkinQaliqBank, ilkinQaliqKassa], commonColors);
+            createChart('onlyDebitChart', 'onlyDebitValue', 'onlyDebitLegend', ['Bank', 'Kassa'], [debitBank, debitKassa], commonColors);
+            createChart('onlyCreditChart', 'onlyCreditValue', 'onlyCreditLegend', ['Bank', 'Kassa'], [creditBank, creditKassa], commonColors);
+            createChart('sonqaliqChart', 'sonqaliqValue', 'sonqaliqLegend', ['Bank', 'Kassa'], [sonQaliqBank, sonQaliqKassa], commonColors);
+
+            createChart('SigortaChart', 'SigortValue', 'SigortaLegend',
+                ['İcbari Sigorta', 'Digər Sığorta', 'Endirimlər', 'Öz Hesabına'],
+                [Icbari_Sigorta, Diger_Sigorta, EndirimLer, Oz_Hesabina],
+                sigortaColors
+            );
+
+
+            createChart('XidmetChart', 'XidmetValue', 'XidmetLegend',
+                ['Emeliyyat', 'Poliklinik'],
+                [Xidmet_tipi_Emeliyyat , Xidmet_tipi_Poliklinik],
+                commonColors
+            );
+
+                    
+
+            createChart('XidmetKateqoriyaChart', 'XidmetKateqoriyaValue', 'XidmetKateqoriyaLegend',
+                xidmetCategoryLabels,
+                xidmetCategoryData,
+                xidmetCategoryColors
+            );
+
+            createChart('MaterialChart', 'MaterialValue', 'MaterialLegend',
+                ['Derman', 'Teserrufat', 'Inventor'],
+                [IlkinQaliqDerman, IlkinQaliqTeserrufat, IlkinQaliqInventor],
+                materialColors
+            );
+
+            createChart('MedaxilChart', 'MedaxilValue', 'MedaxilLegend',
+                ['Derman', 'Teserrufat', 'Inventor'],
+                [MedaxilDerman, MedaxilTeserrufat, MedaxilInventor],
+                materialColors
+            );
+
+            createChart('MexaricChart', 'MexaricValue', 'MexaricLegend',
+                ['Derman', 'Teserrufat', 'Inventor'],
+                [MexaricDerman, MexaricTeserrufat, MexaricInventor],
+                materialColors
+            );
+
+            createChart('QaliqChart', 'QaliqValue', 'QaliqLegend',
+                ['Derman', 'Teserrufat', 'Inventor'],
+                [SonQaliqDerman, SonQaliqTeserrufat, SonQaliqInventor],
+                materialColors
+            );
+
+            createChart('SilinmeChart', 'SilinmeValue', 'SilinmeLegend',
+                ['Derman', 'Teserrufat', 'Inventor'],
+                [SilinmeDerman, SilinmeTeserrufat, SilinmeInventor],
+                materialColors
+            );
+
+
+
+    </script>
+
+</body>
+</html>
