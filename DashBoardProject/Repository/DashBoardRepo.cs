@@ -7,20 +7,27 @@ namespace DashBoardProject.Repository
     public class DashBoardRepo
     {
         private readonly IConfiguration _configuration;
+        private readonly int _InsuranceID;
+        private readonly int _DermanID;
+        private readonly int _SerfiyyatID;
 
         public DashBoardRepo(IConfiguration configuration)
         {
             _configuration = configuration;
+            _InsuranceID = int.Parse(_configuration["AppSettings:Insurance_ID"]);
+            _DermanID = int.Parse(_configuration["AppSettings:Derman_ID"]);
+            _SerfiyyatID = int.Parse(_configuration["AppSettings:Serfiyyat_ID"]);
         }
 
-        public FullDashBoardModel FullDashBoardMetod(DateTime? startDate = null, DateTime? endDate = null)
+        public FullDashBoardModel FullDashBoardMetod(DateTime? startDate = null, DateTime? endDate = null, int? insuranceID = null, int? DermanID = null, int? SerfiyyatID = null)
         {
             var start = startDate ?? DateTime.Today.AddYears(-5);
             var end = endDate ?? DateTime.Today;
+    
 
             var balances = GetAccountBalance(start, end);
-            var dovriyye = GetDovriyyeBalance(start, end);
-            var material = GetMalMaterialBalance(start, end);
+            var dovriyye = GetDovriyyeBalance(start, end, insuranceID);
+            var material = GetMalMaterialBalance(start, end, DermanID, SerfiyyatID);
 
             return new FullDashBoardModel
             {
@@ -34,34 +41,26 @@ namespace DashBoardProject.Repository
         private AccountBalance GetAccountBalance(DateTime startDate, DateTime endDate)
         {
 
-            var IlkinQaliqSql = @"SELECT 
-                                    SUM(CASE WHEN account_type = 1146 THEN Initial_Balance END) AS bank,
-                                    SUM(CASE WHEN account_type = 1147 THEN Initial_Balance END) AS kassa
-                                FROM (
-                                    SELECT 
-                                        pa.Account_Type,
-                                        COALESCE(SUM(CASE 
-                                            WHEN p.Credit_Id = pa.Id AND p.Payment_Date < :startDate THEN -p.Amount
-                                            WHEN p.Debit_Id  = pa.Id AND p.Payment_Date < :startDate THEN  p.Amount
-                                            ELSE 0
-                                        END), 0) AS Initial_Balance
-                                    FROM Payment_Accounts pa
-                                    INNER JOIN Payments p ON pa.Id = p.Credit_Id
-                                    GROUP BY pa.Account_Type
-
-                                    UNION ALL
-
-                                    SELECT 
-                                        pa.Account_Type,
-                                        COALESCE(SUM(CASE 
-                                            WHEN p.Credit_Id = pa.Id AND p.Payment_Date < :startDate THEN -p.Amount
-                                            WHEN p.Debit_Id  = pa.Id AND p.Payment_Date < :startDate THEN  p.Amount
-                                            ELSE 0
-                                        END), 0) AS Initial_Balance
-                                    FROM Payment_Accounts pa
-                                    INNER JOIN Payments p ON pa.Id = p.Debit_Id
-                                    GROUP BY pa.Account_Type
-                                )";
+            var IlkinQaliqSql = @"SELECT SUM (CASE WHEN account_type = 1146 THEN Initial_Balance END) AS bank,
+       SUM (CASE WHEN account_type = 1147 THEN Initial_Balance END) AS kassa 
+  FROM (  SELECT pa.Account_Type,
+                pa.name,
+                 nvl (SUM (-p.Amount), 0) AS Initial_Balance,
+                 sum(p.amount) credit,
+                 0 debet
+            FROM Payment_Accounts pa
+                 INNER JOIN Payments p
+                    ON pa.Id = p.Credit_Id AND p.Payment_Date < :startDate
+        GROUP BY pa.Account_Type,pa.name
+        UNION ALL
+          SELECT pa.Account_Type,pa.name,
+                 nvl (SUM (p.Amount), 0) AS Initial_Balance,
+                 0 credit,
+                 sum(p.amount) debet
+            FROM Payment_Accounts pa
+                 INNER JOIN Payments p
+                    ON pa.Id = p.Debit_Id AND p.Payment_Date < :startDate
+        GROUP BY pa.Account_Type , pa.name)";
 
 
             var MedaxilSql = @"SELECT 
@@ -74,7 +73,8 @@ namespace DashBoardProject.Repository
                                     FROM Payment_Accounts pa
                                     INNER JOIN Payments p 
                                         ON pa.Id = p.Debit_Id 
-                                        AND p.Payment_Date BETWEEN :startDate AND :endDate
+                                        AND p.Payment_Date BETWEEN :startDate AND :endDate 
+                                        AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
                                     GROUP BY pa.Account_Type
                                 )";
 
@@ -82,16 +82,17 @@ namespace DashBoardProject.Repository
             var MexaricSql = @" SELECT 
                                 SUM(CASE WHEN account_type = 1146 THEN Initial_Balance END) AS bank,
                                 SUM(CASE WHEN account_type = 1147 THEN Initial_Balance END) AS kassa
-                            FROM (
-                                SELECT 
-                                    pa.Account_Type,
-                                    COALESCE(SUM(p.Amount), 0) AS Initial_Balance
-                                FROM Payment_Accounts pa
-                                INNER JOIN Payments p 
-                                    ON pa.Id = p.Credit_Id 
-                                    AND p.Payment_Date BETWEEN :startDate AND :endDate
-                                GROUP BY pa.Account_Type
-                            )";
+                                FROM (
+                                    SELECT 
+                                        pa.Account_Type,
+                                        COALESCE(SUM(p.Amount), 0) AS Initial_Balance
+                                    FROM Payment_Accounts pa
+                                    INNER JOIN Payments p 
+                                        ON pa.Id = p.Credit_Id 
+                                        AND p.Payment_Date BETWEEN :startDate AND :endDate
+                                        AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
+                                    GROUP BY pa.Account_Type
+                                )";
 
 
             var SonQaliqSql = @"SELECT 
@@ -103,7 +104,7 @@ namespace DashBoardProject.Repository
                                         SUM(p.amount) AS amount
                                     FROM payments p
                                     INNER JOIN payment_accounts pa ON p.debit_id = pa.id
-                                    WHERE p.payment_date >= :endDatePlusOne
+                                    WHERE p.payment_date < :endDatePlusOne
                                     GROUP BY pa.account_type
 
                                     UNION ALL
@@ -113,7 +114,7 @@ namespace DashBoardProject.Repository
                                         -SUM(p.amount) AS amount
                                     FROM payments p
                                     INNER JOIN payment_accounts pa ON p.credit_id = pa.id
-                                    WHERE p.payment_date >= :endDatePlusOne
+                                    WHERE p.payment_date < :endDatePlusOne
                                     GROUP BY pa.account_type
                                 )";
 
@@ -134,6 +135,7 @@ namespace DashBoardProject.Repository
                 SonQaliq = SonQaliq ?? new MalMulkHereketleri()
             };
         }
+
         private MalMulkHereketleri ExecuteQuery(string sql, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null)
         {
             var connectionstring = _configuration.GetConnectionString("SqlConnection");
@@ -152,7 +154,7 @@ namespace DashBoardProject.Repository
 
             using var reader = cmd.ExecuteReader();
 
-            if (reader.Read()) 
+            if (reader.Read())
             {
                 return new MalMulkHereketleri
                 {
@@ -165,79 +167,116 @@ namespace DashBoardProject.Repository
 
         }
 
-        private Dovriyye_Statistikasi GetDovriyyeBalance(DateTime startDate, DateTime endDate)
+        private Dovriyye_Statistikasi GetDovriyyeBalance(DateTime startDate, DateTime endDate, int? InsuranceID)
         {
-            var TeskilatUzreSql = @"SELECT 
-                                        SUM(CASE WHEN Qrup = 'Icbari_Sigorta' THEN Pasiyent_Sayi ELSE 0 END) AS Icbari_Sigorta,
-                                        SUM(CASE WHEN Qrup = 'Diger_Sigortalar' THEN Pasiyent_Sayi ELSE 0 END) AS Diger_Sigorta,
-                                        SUM(CASE WHEN Qrup = 'Endirimler' THEN Pasiyent_Sayi ELSE 0 END) AS Endirimler,
-                                        SUM(CASE WHEN Qrup = 'Oz_Hesabina' THEN Pasiyent_Sayi ELSE 0 END) AS Oz_Hesabina
-                                    FROM (
-                                        SELECT Qrup, COUNT(DISTINCT pasiyent_id) AS Pasiyent_Sayi
-                                        FROM (
-                                            SELECT 
-                                                CASE 
-                                                    WHEN g.group_type = 2 AND g.id = 278680 THEN 'Icbari_Sigorta'
-                                                    WHEN g.group_type = 2 AND g.id <> 278680 THEN 'Diger_Sigortalar'
-                                                    WHEN g.group_type = 3 THEN 'Endirimler'
-                                                    ELSE 'Oz_Hesabina'
-                                                END AS Qrup,
-                                                p.id AS pasiyent_id
-                                            FROM patients p
-                                            JOIN operations o 
-                                                ON p.id = o.patient_id 
-                                               AND o.deleted = 0
-                                               AND o.is_operation = 1  
-                                            JOIN operation_details od 
-                                                ON od.operation_id = o.id 
-                                               AND od.status > 2 
-                                               AND od.status <> 60 
-                                               AND od.deleted = 0
-                                               AND o.document_date >= :startDate
-                                               AND o.document_date < :endDatePlusOne
-                                            JOIN groups g 
-                                                ON od.group_id = g.id
+            var TeskilatUzreSql = String.Format(@"SELECT SUM (CASE WHEN Qrup = 'Icbari_Sigorta' THEN Pasiyent_Sayi ELSE 0 END)
+          AS Icbari_Sigorta,
+       SUM (
+          CASE WHEN Qrup = 'Diger_Sigortalar' THEN Pasiyent_Sayi ELSE 0 END)
+          AS Diger_Sigorta,
+       SUM (CASE WHEN Qrup = 'Endirimler' THEN Pasiyent_Sayi ELSE 0 END)
+          AS Endirimler,
+       SUM (CASE WHEN Qrup = 'Oz_Hesabina' THEN Pasiyent_Sayi ELSE 0 END)
+          AS Oz_Hesabina
+  FROM (  SELECT Qrup,
+                 SUM (AMOUNT
+                    )
+                    AS Pasiyent_Sayi
+            FROM (SELECT CASE
+                            WHEN g.group_type = 2 AND g.id = {0}
+                            THEN
+                               'Icbari_Sigorta'
+                            WHEN g.group_type = 2 AND g.id <> 278680
+                            THEN
+                               'Diger_Sigortalar'
+                            WHEN g.group_type = 3
+                            THEN
+                               'Endirimler'
+                            ELSE
+                               'Oz_Hesabina'
+                         END
+                            AS Qrup,
+                         CASE
+                       WHEN g.group_type = 1 THEN od.paid_amount
+                       ELSE od.paid_amount + od.group_amount
+                    END AMOUNT
+                    FROM patients p
+                         JOIN
+                         operations o
+                            ON     p.id = o.patient_id
+                               AND o.deleted = 0
+                               AND o.is_operation = 0
+                         JOIN
+                         operation_details od
+                            ON     od.operation_id = o.id
+                               AND od.status > 2
+                               AND od.status <> 60
+                               AND od.deleted = 0
+                               AND o.document_date >= :startDate
+                               AND o.document_date < :endDatePlusOne
+                         JOIN groups g ON od.GROUP_ID = g.id
+                  UNION ALL
+                  SELECT 
+                         CASE
+                            WHEN g.group_type = 2 AND g.id = {1}
+                            THEN
+                               'Icbari_Sigorta'
+                            WHEN g.group_type = 2 AND g.id <> 278680
+                            THEN
+                               'Diger_Sigortalar'
+                            WHEN g.group_type = 3
+                            THEN
+                               'Endirimler'
+                            ELSE
+                               'Oz_Hesabina'
+                         END
+                            AS Qrup, 
+                         CASE
+                       WHEN g.group_type = 1 THEN od.paid_amount
+                       ELSE od.paid_amount + od.group_amount END AMOUNT
+                    FROM patients p
+                         JOIN
+                         operations o
+                            ON     p.id = o.patient_id
+                               AND o.deleted = 0
+                               AND o.is_operation = 1
+                         JOIN
+                         operation_details od
+                            ON     od.operation_id = o.id
+                               AND od.tab_index = 1
+                               AND od.deleted = 0
+                               AND od.operation_date >= :startDate
+                               AND od.operation_date < :endDatePlusOne
+                         JOIN groups g ON od.GROUP_ID = g.id) sub
+        GROUP BY Qrup) final",_InsuranceID, _InsuranceID);
 
-                                            UNION ALL
-
-                                            SELECT 
-                                                CASE 
-                                                    WHEN g.group_type = 2 AND g.id = 278680 THEN 'Icbari_Sigorta'
-                                                    WHEN g.group_type = 2 AND g.id <> 278680 THEN 'Diger_Sigortalar'
-                                                    WHEN g.group_type = 3 THEN 'Endirimler'
-                                                    ELSE 'Oz_Hesabina'
-                                                END AS Qrup,
-                                                p.id AS pasiyent_id
-                                            FROM patients p
-                                            JOIN operations o 
-                                                ON p.id = o.patient_id 
-                                               AND o.deleted = 0
-                                               AND o.is_operation = 0 
-                                            JOIN operation_details od 
-                                                ON od.operation_id = o.id 
-                                               AND od.status > 2 
-                                               AND od.status <> 60 
-                                               AND od.deleted = 0
-                                               AND o.document_date >= :startDate
-                                               AND o.document_date < :endDatePlusOne
-                                            JOIN groups g 
-                                                ON od.group_id = g.id
-                                           
-                                        ) sub
-                                        GROUP BY Qrup
-                                    ) final";
-
-            var XidmetTipiSql = @"SELECT 
-                                  CASE 
-                                    WHEN o.is_operation = 1 THEN 'Emeliyyat'
-                                    WHEN o.is_operation = 0 THEN 'Poliklinik'
-                                    ELSE 'Digər'
-                                  END AS service_type,
+            var XidmetTipiSql = @"SELECT  
+                                    'Poliklinik' 
+                                   service_type,
                                   SUM(od.paid_amount) AS total_price
                                 FROM operations o
                                 JOIN operation_details od ON od.operation_id = o.id
-                                Where O.DOCUMENT_DATE BETWEEN :startDate AND :endDate
-                                GROUP BY o.is_operation ";
+                                WHERE o.document_date BETWEEN :startDate AND :endDate
+                                  AND o.deleted = 0 
+                                  AND od.status > 2 
+                                  AND od.status <> 60 
+                                  AND o.is_operation = 0
+                                GROUP BY o.is_operation
+
+                                UNION ALL
+
+                                SELECT 
+                                     'Emeliyyat'
+                                    service_type,
+                                  SUM(od.paid_amount) AS total_price
+                                FROM operations o
+                                JOIN operation_details od ON od.operation_id = o.id
+                                WHERE OD.OPERATION_DATE BETWEEN :startDate AND :endDate
+                                  AND o.deleted = 0 
+                                  AND o.is_operation = 1
+                                GROUP BY o.is_operation
+                                ";
+
 
             var Xidmet_CategoryasiSql = @"SELECT * FROM (
                                                     SELECT 
@@ -270,14 +309,14 @@ namespace DashBoardProject.Repository
                 Diger_Sigorta = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader.GetValue(1)),
                 Endirimler = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader.GetValue(2)),
                 Oz_Hesabina = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader.GetValue(3)),
-            }, startDate, endDate, endDatePlusOne);
+            }, startDate, endDate, endDatePlusOne );
 
             var XidmetTipi = ExecuteQuery(XidmetTipiSql, reader =>
             {
                 decimal emeliyyat = 0;
                 decimal poliklinik = 0;
 
-                
+
                 do
                 {
                     var serviceType = reader.GetString(0);
@@ -317,31 +356,46 @@ namespace DashBoardProject.Repository
             };
 
         }
-        private T ExecuteQuery<T>(string sql, Func<IDataReader, T> mapFunc, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null)
+
+        private T ExecuteQuery<T>(
+            string sql,
+            Func<IDataReader, T> mapFunc,
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            DateTime? endDatePlusOne = null
+            )
         {
             var connectionstring = _configuration.GetConnectionString("SqlConnection");
 
-            using var conn = new OracleConnection(connectionstring);
-            conn.Open();
-
-            using var cmd = new OracleCommand(sql, conn);
-
-            if (startDate.HasValue)
-                cmd.Parameters.Add(new OracleParameter("startDate", OracleDbType.Date)).Value = startDate.Value;
-            //if (endDate.HasValue)
-            //    cmd.Parameters.Add(new OracleParameter("endDate", OracleDbType.Date)).Value = endDate.Value;
-            if (endDatePlusOne.HasValue)
-                cmd.Parameters.Add(new OracleParameter("endDatePlusOne", OracleDbType.Date)).Value = endDatePlusOne.Value;
-
-            using var reader = cmd.ExecuteReader();
-
-            if (reader.Read())
+            using (var conn = new OracleConnection(connectionstring))
             {
-                return mapFunc(reader);
-            }
+                conn.Open();
 
-            return default;
+                using (var cmd = new OracleCommand(sql, conn))
+                {
+                    if (sql.Contains(":startDate") && startDate.HasValue)
+                        cmd.Parameters.Add(new OracleParameter("startDate", OracleDbType.Date)).Value = startDate.Value;
+
+                    if (!sql.Contains(":endDatePlusOne")&&sql.Contains(":endDate") && endDate.HasValue)
+                        cmd.Parameters.Add(new OracleParameter("endDate", OracleDbType.Date)).Value = endDate.Value;
+
+                    if (sql.Contains(":endDatePlusOne") && endDatePlusOne.HasValue)
+                        cmd.Parameters.Add(new OracleParameter("endDatePlusOne", OracleDbType.Date)).Value = endDatePlusOne.Value;
+
+
+                    var reader = cmd.ExecuteReader();
+
+                    if (reader.Read())
+                    {
+                        return mapFunc(reader);
+                    }
+
+                    return default;
+                }
+            }
         }
+
+
         private List<T> ExecuteQueryList<T>(
                                             string sql,
                                             Func<IDataReader, T> mapFunc,
@@ -372,130 +426,260 @@ namespace DashBoardProject.Repository
             return result;
         }
 
-        private Mal_Material_Hereketleri GetMalMaterialBalance(DateTime startDate, DateTime endDate)
+        private Mal_Material_Hereketleri GetMalMaterialBalance(DateTime startDate, DateTime endDate, int? DermanID, int? SerfiyyayID)
         {
-            var IlinkQaliqSql = @"SELECT
-                                    CASE 
-                                        WHEN G.ID = 101 THEN 'Inventory'
-                                        WHEN G.ID = 81 THEN 'Derman'
-                                        WHEN G.ID = 595 THEN 'Teserrufat'
-                                        ELSE 'Other'
-                                    END AS ProductGroupType,
-                                    NVL(SUM(
-                                        CASE
-                                            WHEN GM.DOCUMENT_TYPE_CODE = 1 THEN GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE
-                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE)
-                                            ELSE 0
-                                        END
-                                    ), 0) AS TotalAmount
-                                FROM GOODS_MOTION GM
-                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                WHERE GM.DELETED = 0
-                                  AND GD.DELETED = 0
-                                  AND GM.STATUS = 3
-                                  AND GM.INVOICE_DATE < :startDate
-                                  AND G.ID IN (101, 81, 595)
-                                GROUP BY G.ID
-                                ";
+            var IlinkQaliqSql = String.Format(@"SELECT
+                                                ProductGroupType,
+                                                SUM(TotalAmount) AS TotalAmount
+                                            FROM
+                                            (
+                                                SELECT
+                                                    CASE 
+                                                        WHEN G.ID = {0} THEN 'Derman'
+                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
+                                                        ELSE 'Other'
+                                                    END AS ProductGroupType,
+                                                    NVL(SUM(
+                                                        CASE
+                                                            WHEN GM.DOCUMENT_TYPE_CODE = 1 THEN GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE
+                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE)
+                                                            ELSE 0
+                                                        END
+                                                    ), 0) AS TotalAmount
+                                                FROM GOODS_MOTION GM
+                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                WHERE GM.DELETED = 0
+                                                  AND GD.DELETED = 0
+                                                  AND GM.STATUS = 3
+                                                  AND GM.INVOICE_DATE < :startDate
+                                                  AND GM.DOCUMENT_TYPE_CODE = 1
+                                                  AND G.ID IN ({0}, {1})
+                                                GROUP BY G.ID
 
-            var MedaxilSql = @"SELECT
-                                    CASE 
-                                        WHEN G.ID = 101 THEN 'Inventory'
-                                        WHEN G.ID = 81 THEN 'Derman'
-                                        WHEN G.ID = 595 THEN 'Teserrufat'
-                                        ELSE 'Other'
-                                    END AS ProductGroupType,
-                                    NVL(SUM(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE), 0) AS TotalAmount
-                                FROM GOODS_MOTION GM
-                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                WHERE GM.DELETED = 0
-                                  AND GM.STATUS = 3
-                                  AND GM.DOCUMENT_TYPE_CODE = 1
-                                  AND GD.DELETED = 0
-                                  AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
-                                  AND G.ID IN (101, 81, 595)
-                                GROUP BY G.ID
-                                ";
+                                                UNION ALL
 
-            var MexaricSql = @"SELECT
-                                CASE 
-                                    WHEN G.ID = 101 THEN 'Inventory'
-                                    WHEN G.ID = 81 THEN 'Derman'
-                                    WHEN G.ID = 595 THEN 'Teserrufat'
-                                    ELSE 'Other'
-                                END AS ProductGroupType,
-                                NVL(SUM(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE), 0) AS TotalAmount
-                            FROM GOODS_MOTION GM
-                            INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                            INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                            INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                            WHERE GM.DELETED = 0
-                              AND GM.STATUS = 3
-                              AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
-                              AND GD.DELETED = 0
-                              AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
-                              AND G.ID IN (101, 81, 595)
-                            GROUP BY G.ID
-                            ";
+                                                SELECT
+                                                    CASE 
+                                                        WHEN G.ID = {0} THEN 'Derman'
+                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
+                                                        ELSE 'Other'
+                                                    END AS ProductGroupType,
+                                                    NVL(SUM(
+                                                        CASE
+                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * INCOME_GD.BOX_PRICE + GD.QUANTITY * INCOME_GD.SUPPLIER_PRICE)
+                                                            ELSE 0
+                                                        END
+                                                    ), 0) AS TotalAmount
+                                                FROM GOODS_MOTION GM
+                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                                                INNER JOIN GOODS_DETAILS INCOME_GD ON GD.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                WHERE GM.DELETED = 0
+                                                  AND GD.DELETED = 0
+                                                  AND GM.STATUS = 3
+                                                  AND GM.INVOICE_DATE < :startDate
+                                                  AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
+                                                  AND G.ID IN ({0}, {1})
+                                                GROUP BY G.ID
 
-            var SilinmeSql = @"SELECT
-                                    CASE 
-                                        WHEN G.ID = 101 THEN 'Inventory'
-                                        WHEN G.ID = 81 THEN 'Derman'
-                                        WHEN G.ID = 595 THEN 'Teserrufat'
-                                        ELSE 'Other'
-                                    END AS ProductGroupType,
-                                    NVL(SUM(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE), 0) AS TotalAmount
-                                FROM GOODS_MOTION GM
-                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                WHERE GM.DELETED = 0
-                                  AND GM.STATUS = 3
-                                  AND GM.DOCUMENT_TYPE_CODE = 3
-                                  AND GD.DELETED = 0
-                                  AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
-                                  AND G.ID IN (101, 81, 595)
-                                GROUP BY G.ID
-                                ";
+                                                union all
 
-            var SonQaliqSql = @"SELECT
-                                    CASE 
-                                        WHEN G.ID = 101 THEN 'Inventory'
-                                        WHEN G.ID = 81 THEN 'Derman'
-                                        WHEN G.ID = 595 THEN 'Teserrufat'
-                                        ELSE 'Other'
-                                    END AS ProductGroupType,
-                                    NVL(SUM(
-                                        CASE
-                                            WHEN GM.DOCUMENT_TYPE_CODE = 1 THEN GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE
-                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE)
-                                            ELSE 0
-                                        END
-                                    ), 0) AS TotalAmount
-                                FROM GOODS_MOTION GM
-                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                WHERE GM.DELETED = 0
-                                  AND GD.DELETED = 0
-                                  AND GM.STATUS = 3
-                                  AND GM.INVOICE_DATE < :endDatePlusOne
-                                  AND G.ID IN (101, 81, 595)
-                                GROUP BY G.ID
-                                ";
+                                                SELECT CASE
+                                                          WHEN G.ID = {4} THEN 'Derman'
+                                                          WHEN G.ID = {5} THEN 'Serfiyyat'
+                                                          ELSE 'Other'
+                                                       END
+                                                          AS ProductGroupType,
+                                                       NVL (
+                                                          SUM (
+                                                             - (  UP.BOX_QUANTITY * INCOME_GD.BOX_PRICE
+                                                                + UP.QUANTITY * INCOME_GD.SUPPLIER_PRICE)),
+                                                          0)
+                                                          AS TotalAmount
+                                                  FROM USED_PRODUCTS UP
+                                                       INNER JOIN GOODS_DETAILS INCOME_GD
+                                                          ON UP.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+                                                       INNER JOIN PRODUCTS P ON UP.PRODUCT_ID = P.ID
+                                                       INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                 WHERE     UP.DELETED = 0
+                                                       AND UP.use_DATE < :startDate
+                                                       AND G.ID IN ({6}, {7})
+                                              GROUP BY G.ID
+                                                            ) t
+                                                                GROUP BY ProductGroupType", _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID,_DermanID, _SerfiyyatID,_DermanID, _SerfiyyatID);
+
+            var MedaxilSql = String.Format(@"SELECT
+                                    ProductGroupType,
+                                    SUM(TotalAmount) AS TotalAmount
+                                FROM (
+                                    SELECT
+                                        CASE 
+                                            WHEN G.ID = {0} THEN 'Derman'
+                                            WHEN G.ID = {1} THEN 'Serfiyyat'
+                                            ELSE 'Other'
+                                        END AS ProductGroupType,
+                                        NVL(SUM(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE), 0) AS TotalAmount
+                                    FROM GOODS_MOTION GM
+                                    INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                                    INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                                    INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                    WHERE GM.DELETED = 0
+                                      AND GM.STATUS = 3
+                                      AND GD.DELETED = 0
+                                      AND GM.DOCUMENT_TYPE_CODE = 1
+                                      AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
+                                      AND G.ID IN ({0}, {1})
+                                    GROUP BY G.ID
+                                ) t
+                                GROUP BY ProductGroupType", _DermanID, _SerfiyyatID);
+
+            var MexaricSql = String.Format(@"
+                                            SELECT
+                                                ProductGroupType,
+                                                NVL(SUM(TotalAmount), 0) AS TotalAmount
+                                            FROM (
+                                                SELECT
+                                                    CASE 
+                                                        WHEN G.ID = {0} THEN 'Derman'
+                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
+                                                        ELSE 'Other'
+                                                    END AS ProductGroupType,
+                                                    (GD.BOX_QUANTITY * income_gd.BOX_PRICE + GD.QUANTITY * income_gd.SUPPLIER_PRICE) AS TotalAmount
+                                                FROM GOODS_MOTION GM
+                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                                                INNER JOIN GOODS_DETAILS income_GD ON GD.income_goods_detail_id = income_gd.id
+                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                WHERE GM.DELETED = 0
+                                                  AND GM.STATUS = 3
+                                                  AND GD.DELETED = 0
+                                                  AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
+                                                  AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
+                                                  AND G.ID IN ({0}, {1})
+                                            ) t
+                                            GROUP BY ProductGroupType", _DermanID, _SerfiyyatID);
+
+
+            var SilinmeSql = String.Format(@"SELECT
+                        ProductGroupType,
+                        SUM(TotalAmount) AS TotalAmount
+                    FROM (
+                        SELECT
+                            CASE 
+                                WHEN G.ID = {0} THEN 'Derman'
+                                WHEN G.ID = {1} THEN 'Serfiyyat'
+                                ELSE 'Other'
+                            END AS ProductGroupType,
+                            NVL(SUM(GD.BOX_QUANTITY * income_gd.BOX_PRICE + GD.QUANTITY * income_gd.SUPPLIER_PRICE), 0) AS TotalAmount
+                        FROM GOODS_MOTION GM
+                        INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                        INNER JOIN GOODS_DETAILS income_GD ON GD.income_goods_detail_id = income_gd.id
+                        INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                        WHERE GM.DELETED = 0
+                          AND GM.STATUS = 3
+                          AND GD.DELETED = 0
+                          AND GM.DOCUMENT_TYPE_CODE IN (3)
+                          AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
+                          AND G.ID IN ({0}, {1})
+                        GROUP BY G.ID
+                    ) t
+                    GROUP BY ProductGroupType", _DermanID, _SerfiyyatID);
+
+
+            var SonQaliqSql = String.Format(@"SELECT
+                                                ProductGroupType,
+                                                SUM(TotalAmount) AS TotalAmount
+                                            FROM
+                                            (
+                                                SELECT
+                                                    CASE 
+                                                        WHEN G.ID = {0} THEN 'Derman'
+                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
+                                                        ELSE 'Other'
+                                                    END AS ProductGroupType,
+                                                    NVL(SUM(
+                                                        CASE
+                                                            WHEN GM.DOCUMENT_TYPE_CODE = 1 THEN GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE
+                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE)
+                                                            ELSE 0
+                                                        END
+                                                    ), 0) AS TotalAmount
+                                                FROM GOODS_MOTION GM
+                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                WHERE GM.DELETED = 0
+                                                  AND GD.DELETED = 0
+                                                  AND GM.STATUS = 3
+                                                  AND GM.INVOICE_DATE < :endDatePlusOne
+                                                  AND GM.DOCUMENT_TYPE_CODE = 1
+                                                  AND G.ID IN ({0}, {1})
+                                                GROUP BY G.ID
+
+                                                UNION ALL
+
+                                                SELECT
+                                                    CASE 
+                                                        WHEN G.ID = {0} THEN 'Derman'
+                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
+                                                        ELSE 'Other'
+                                                    END AS ProductGroupType,
+                                                    NVL(SUM(
+                                                        CASE
+                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * INCOME_GD.BOX_PRICE + GD.QUANTITY * INCOME_GD.SUPPLIER_PRICE)
+                                                            ELSE 0
+                                                        END
+                                                    ), 0) AS TotalAmount
+                                                FROM GOODS_MOTION GM
+                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+                                                INNER JOIN GOODS_DETAILS INCOME_GD ON GD.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                WHERE GM.DELETED = 0
+                                                  AND GD.DELETED = 0
+                                                  AND GM.STATUS = 3
+                                                  AND GM.INVOICE_DATE < :endDatePlusOne
+                                                  AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
+                                                  AND G.ID IN ({0}, {1})
+                                                GROUP BY G.ID
+
+                                                union all
+
+                                                SELECT CASE
+                                                          WHEN G.ID = {4} THEN 'Derman'
+                                                          WHEN G.ID = {5} THEN 'Serfiyyat'
+                                                          ELSE 'Other'
+                                                       END
+                                                          AS ProductGroupType,
+                                                       NVL (
+                                                          SUM (
+                                                             - (  UP.BOX_QUANTITY * INCOME_GD.BOX_PRICE
+                                                                + UP.QUANTITY * INCOME_GD.SUPPLIER_PRICE)),
+                                                          0)
+                                                          AS TotalAmount
+                                                  FROM USED_PRODUCTS UP
+                                                       INNER JOIN GOODS_DETAILS INCOME_GD
+                                                          ON UP.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+                                                       INNER JOIN PRODUCTS P ON UP.PRODUCT_ID = P.ID
+                                                       INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+                                                 WHERE     UP.DELETED = 0
+                                                       AND UP.use_DATE < :endDatePlusOne
+                                                       AND G.ID IN ({6}, {7})
+                                              GROUP BY G.ID
+                                                            ) t
+                                                                GROUP BY ProductGroupType", _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID);
 
             var endDatePlusOne = endDate.AddDays(1);
 
             var IlkinQaliq = ExecuteMaterialQuery(IlinkQaliqSql, startDate: startDate);
             var Medaxil = ExecuteMaterialQuery(MedaxilSql, startDate: startDate, endDatePlusOne: endDatePlusOne);
             var Mexaric = ExecuteMaterialQuery(MexaricSql, startDate: startDate, endDatePlusOne: endDatePlusOne);
-            var Silinme = ExecuteMaterialQuery(SilinmeSql, startDate: startDate,endDatePlusOne: endDatePlusOne);
-            var SonQaliq = ExecuteMaterialQuery(SonQaliqSql,endDatePlusOne: endDatePlusOne);
+            var Silinme = ExecuteMaterialQuery(SilinmeSql, startDate: startDate, endDatePlusOne: endDatePlusOne);
+            var SonQaliq = ExecuteMaterialQuery(SonQaliqSql, endDatePlusOne: endDatePlusOne);
 
             return new Mal_Material_Hereketleri
             {
@@ -507,7 +691,7 @@ namespace DashBoardProject.Repository
             };
         }
 
-        private Mal_Material ExecuteMaterialQuery(string sql, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null)
+        private Mal_Material ExecuteMaterialQuery(string sql, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null, int? dermanID = null, int? serfiyyatID = null)
         {
             var connectionString = _configuration.GetConnectionString("SqlConnection");
 
@@ -525,6 +709,12 @@ namespace DashBoardProject.Repository
             if (endDatePlusOne.HasValue)
                 cmd.Parameters.Add(new OracleParameter("endDatePlusOne", OracleDbType.Date)).Value = endDatePlusOne.Value.Date;
 
+            //if (dermanID.HasValue)
+            //    cmd.Parameters.Add(new OracleParameter("DermanID", OracleDbType.Int32)).Value = dermanID.Value;
+
+            //if (serfiyyatID.HasValue)
+            //    cmd.Parameters.Add(new OracleParameter("SerfiyyatID", OracleDbType.Int32)).Value = serfiyyatID.Value;
+
             using var reader = cmd.ExecuteReader();
 
             var result = new Mal_Material();
@@ -532,41 +722,24 @@ namespace DashBoardProject.Repository
             while (reader.Read())
             {
                 string type = reader["ProductGroupType"]?.ToString()?.Trim();
-                decimal value = 0;
-
-                try
-                {
-                    value = reader["TotalAmount"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["TotalAmount"]);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("TotalAmount parse xətası: " + ex.Message);
-                }
-
-                Console.WriteLine($"Gələn tip: '{type}', Dəyər: {value}");
+                decimal value = reader["TotalAmount"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["TotalAmount"]);
 
                 if (!string.IsNullOrEmpty(type))
                 {
                     if (type.Contains("Derman", StringComparison.OrdinalIgnoreCase))
                         result.Derman = value;
-                    else if (type.Contains("Teserrufat", StringComparison.OrdinalIgnoreCase))
-                        result.Teserrufat = value;
-                    else if (type.Contains("Invent", StringComparison.OrdinalIgnoreCase))
-                        result.Inventor = value;
-                    else
-                        Console.WriteLine($"[⚠️] Naməlum tip: '{type}'");
-                }
-                else
-                {
-                    Console.WriteLine("[⚠️] ProductGroupType boş və ya null gəldi.");
+                    else if (type.Contains("Serfiyyat", StringComparison.OrdinalIgnoreCase))
+                        result.Serfiyyat = value;
+                    else if (type.Contains("Other", StringComparison.OrdinalIgnoreCase))
+                        result.Digerleri = value;
                 }
             }
-
-            Console.WriteLine($"[✅] Nəticə - Derman: {result.Derman}, Teserrufat: {result.Teserrufat}, Inventor: {result.Inventor}");
 
             return result;
         }
 
 
+
     }
+
 }

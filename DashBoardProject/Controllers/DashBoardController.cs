@@ -10,13 +10,15 @@ namespace DashBoardProject.Controllers
         public DashBoardController(IConfiguration configuration) 
         {
             _repo = new DashBoardRepo(configuration);
+
         }
 
         [HttpGet]
         public IActionResult FullDashBoard(DateTime? startDate, DateTime? endDate)
         {
-            var start = startDate ?? DateTime.Today.AddYears(-5);
+            var start = startDate ?? DateTime.Today.AddMonths(-1);
             var end = endDate ?? DateTime.Today;
+
 
             var model = _repo.FullDashBoardMetod(start, end);
 

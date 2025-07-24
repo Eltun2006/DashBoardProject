@@ -239,12 +239,6 @@
             <div class="legend" id="XidmetLegend"></div>
         </div>
         <div class="chart-container sigorta-container">
-            <div class="chart-title">Maliyyə üzrə</div>
-            <canvas id="SigortaChart"></canvas>
-            <div class="center-value" id="SigortValue">0</div>
-            <div class="legend" id="SigortaLegend"></div>
-        </div>
-        <div class="chart-container sigorta-container">
             <div class="chart-title">Xidmət kateqoryası üzrə</div>
             <canvas id="XidmetKateqoriyaChart"></canvas>
             <div class="center-value" id="XidmetKateqoriyaValue">0</div>
@@ -321,24 +315,24 @@
             const xidmetCategoryData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(@xidmetData));
 
             const IlkinQaliqDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Derman ?? 0));
-            const IlkinQaliqTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Teserrufat ?? 0));
-            const IlkinQaliqInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Inventor ?? 0));
+            const IlkinQaliqSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Serfiyyat ?? 0));
+            const IlkinQaliqDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Digerleri ?? 0));
 
             const MedaxilDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Derman ?? 0));
-            const MedaxilTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Teserrufat ?? 0));
-            const MedaxilInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Inventor ?? 0));
+            const MedaxilSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Serfiyyat ?? 0));
+            const MedaxilDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Digerleri ?? 0));
 
             const MexaricDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Derman ?? 0));
-            const MexaricTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Teserrufat ?? 0));
-            const MexaricInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Inventor ?? 0));
+            const MexaricSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Serfiyyat ?? 0));
+            const MexaricDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Digerleri ?? 0));
 
             const SilinmeDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Derman ?? 0));
-            const SilinmeTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Teserrufat ?? 0));
-            const SilinmeInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Inventor ?? 0));
+            const SilinmeSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Serfiyyat ?? 0));
+            const SilinmeDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Digerleri ?? 0));
 
             const SonQaliqDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Derman ?? 0));
-            const SonQaliqTeserrufat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Teserrufat ?? 0));
-            const SonQaliqInventor = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Inventor ?? 0));
+            const SonQaliqSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Serfiyyat ?? 0));
+            const SonQaliqDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Digerleri ?? 0));
 
             function animateValue(id, start, end, duration) {
                 const obj = document.getElementById(id);
@@ -396,6 +390,38 @@
                 updateLegend(legendId, labels, data, colors);
             }
 
+                    function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                // Burada yalnız rəqəm göstəririk, ₼ işarəsi yoxdur
+                obj.innerText = value.toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function updateLegend(containerId, labels, data, colors) {
+            const legendContainer = document.getElementById(containerId);
+            legendContainer.innerHTML = "";
+            for (let i = 0; i < labels.length; i++) {
+                const item = document.createElement("div");
+                item.className = `legend-item ${containerId === "MaterialLegend" ? "nowrap-legend" : ""}`;
+                // Legenddə ₼ işarəsi qalır
+                item.innerHTML = `
+                    <span class="legend-color" style="background-color:${colors[i]}"></span>
+                    ${labels[i]} – ${data[i].toLocaleString()} ₼
+                `;
+                legendContainer.appendChild(item);
+            }
+        }
+
+
             const commonColors = ['#4CAF50', '#FFC107'];
             const sigortaColors = ['#3F51B5', '#E91E63', '#009688', '#FFC107'];
             const materialColors = ['#8e44ad', '#2980b9', '#27ae60'];
@@ -428,32 +454,32 @@
             );
 
             createChart('MaterialChart', 'MaterialValue', 'MaterialLegend',
-                ['Derman', 'Teserrufat', 'Inventor'],
-                [IlkinQaliqDerman, IlkinQaliqTeserrufat, IlkinQaliqInventor],
+                ['Derman', 'Serfiyyat', 'Digerleri'],
+                [IlkinQaliqDerman, IlkinQaliqSerfiyyat, IlkinQaliqDigerleri],
                 materialColors
             );
 
             createChart('MedaxilChart', 'MedaxilValue', 'MedaxilLegend',
-                ['Derman', 'Teserrufat', 'Inventor'],
-                [MedaxilDerman, MedaxilTeserrufat, MedaxilInventor],
+                ['Derman', 'Serfiyyat', 'Digerleri'],
+                [MedaxilDerman, MedaxilSerfiyyat, MedaxilDigerleri],
                 materialColors
             );
 
             createChart('MexaricChart', 'MexaricValue', 'MexaricLegend',
-                ['Derman', 'Teserrufat', 'Inventor'],
-                [MexaricDerman, MexaricTeserrufat, MexaricInventor],
+                ['Derman', 'Serfiyyat', 'Digerleri'],
+                [MexaricDerman, MexaricSerfiyyat, MexaricDigerleri],
                 materialColors
             );
 
             createChart('QaliqChart', 'QaliqValue', 'QaliqLegend',
-                ['Derman', 'Teserrufat', 'Inventor'],
-                [SonQaliqDerman, SonQaliqTeserrufat, SonQaliqInventor],
+                ['Derman', 'Serfiyyat', 'Digerleri'],
+                [SonQaliqDerman, SonQaliqSerfiyyat, SonQaliqDigerleri],
                 materialColors
             );
 
             createChart('SilinmeChart', 'SilinmeValue', 'SilinmeLegend',
-                ['Derman', 'Teserrufat', 'Inventor'],
-                [SilinmeDerman, SilinmeTeserrufat, SilinmeInventor],
+                ['Derman', 'Serfiyyat', 'Digerleri'],
+                [SilinmeDerman, SilinmeSerfiyyat, SilinmeDigerleri],
                 materialColors
             );
 

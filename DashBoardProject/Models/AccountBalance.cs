@@ -35,8 +35,8 @@ namespace DashBoardProject.Models
     public class Mal_Material
     {
         public decimal Derman { get; set; }
-        public decimal Teserrufat { get; set; }
-        public decimal Inventor { get; set; }
+        public decimal Serfiyyat { get; set; }
+        public decimal Digerleri { get; set; }
     }
     public class Mal_Material_Hereketleri
     {
