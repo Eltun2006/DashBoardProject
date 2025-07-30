@@ -288,55 +288,221 @@ and od.SERVICE_PRICE_INCLUDED=0) sub
         GROUP BY Qrup) final", _InsuranceID, _InsuranceID);
 
             var XidmetTipiSql = @"SELECT  
-                                    'Poliklinik' 
-                                   service_type,
-                                  SUM(od.paid_amount) AS total_price
-                                FROM operations o
-                                JOIN operation_details od ON od.operation_id = o.id
-                                WHERE o.document_date BETWEEN :startDate AND :endDate
-                                  AND o.deleted = 0 
-                                  AND od.status > 2 
-                                  AND od.status <> 60 
-                                  AND o.is_operation = 0
-                                GROUP BY o.is_operation
+    'Poliklinik' AS service_type,
+    SUM(
+        CASE
+            WHEN g.group_type = 1 THEN od.paid_amount
+            ELSE od.paid_amount + od.group_amount
+        END
+    ) AS total_price
+FROM operations o
+JOIN operation_details od ON od.operation_id = o.id
+JOIN groups g ON od.GROUP_ID = g.id
+WHERE od.status > 2
+  AND od.status <> 60
+  AND od.deleted = 0
+  AND o.deleted = 0
+  AND o.is_operation = 0
+  AND o.document_date >= :startDate
+  AND o.document_date < :endDatePlusOne
 
-                                UNION ALL
+UNION ALL
 
-                                SELECT 
-                                     'Emeliyyat'
-                                    service_type,
-                                  SUM(od.paid_amount) AS total_price
-                                FROM operations o
-                                JOIN operation_details od ON od.operation_id = o.id
-                                WHERE OD.OPERATION_DATE BETWEEN :startDate AND :endDate
-                                  AND o.deleted = 0 
-                                  AND o.is_operation = 1
-                                GROUP BY o.is_operation
-                                ";
+SELECT
+    'Emeliyyat' AS service_type,
+    SUM(
+        CASE
+            WHEN g.group_type = 1 THEN od.paid_amount
+            ELSE od.paid_amount + od.group_amount
+        END
+    ) AS total_price
+FROM operations o
+JOIN operation_details od ON od.operation_id = o.id
+JOIN groups g ON od.GROUP_ID = g.id
+WHERE od.tab_index IN (1, 2)
+  AND od.deleted = 0
+  AND (od.SERVICE_PRICE_INCLUDED = 0 OR od.SERVICE_PRICE_INCLUDED IS NULL)  -- Əgər şərt lazımdırsa
+  AND o.deleted = 0
+  AND o.is_operation = 1
+  AND od.operation_date >= :startDate
+  AND od.operation_date < :endDatePlusOne";
 
 
-            var Xidmet_CategoryasiSql = @"SELECT * FROM (
-                                                    SELECT 
-                                                        sc.name AS category_name,
-                                                        SUM(op.paid_amount + CASE 
-                                                            WHEN gr.group_type = 1 THEN 0 
-                                                            ELSE op.group_amount 
-                                                        END) AS total_amount
-                                                    FROM services s
-                                                    INNER JOIN operation_details op ON s.id = op.service_id
-                                                    INNER JOIN operations o ON o.id = op.operation_id 
-                                                    INNER JOIN service_categories sc ON sc.id = s.category_id
-                                                    INNER JOIN groups gr ON op.group_id = gr.id
-                                                    WHERE o.deleted = 0 
-                                                      AND op.deleted = 0
-                                                      AND op.status > 2 
-                                                      AND op.status <> 60
-                                                      AND o.document_date >= :startDate
-                                                      AND o.document_date < :endDate
-                                                    GROUP BY sc.name
-                                                    ORDER BY total_amount DESC
-                                                )
-                                                WHERE ROWNUM <= 5";
+            var Xidmet_CategoryasiSql = @"SELECT category_name, total_amount_sum
+FROM (
+    SELECT category_name, SUM(total_amount) total_amount_sum
+    FROM (
+        -- Poliklinik
+        SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+               SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+        FROM services s
+        JOIN operation_details op ON s.id = op.service_id
+        JOIN operations o ON o.id = op.operation_id
+        JOIN service_categories sc ON sc.id = s.category_id
+        JOIN groups gr ON op.group_id = gr.id
+        WHERE o.deleted = 0
+          AND op.deleted = 0
+          AND op.status > 2
+          AND op.status <> 60
+          AND o.is_operation = 0
+          AND o.document_date >= :startDate
+          AND o.document_date < :endDatePlusOne
+        GROUP BY sc.name
+
+        UNION ALL
+
+        -- Emeliyyat
+        SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+               SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+        FROM services s
+        JOIN operation_details op ON s.id = op.service_id
+        JOIN operations o ON o.id = op.operation_id
+        JOIN service_categories sc ON sc.id = s.category_id
+        JOIN groups gr ON op.group_id = gr.id
+        WHERE o.deleted = 0
+          AND op.deleted = 0
+          AND o.is_operation = 1
+          AND op.tab_index IN (1, 2)
+          AND op.operation_date >= :startDate
+          AND op.operation_date < :endDatePlusOne
+          AND (op.SERVICE_PRICE_INCLUDED = 0 OR op.SERVICE_PRICE_INCLUDED IS NULL)
+        GROUP BY sc.name
+    )
+    GROUP BY category_name
+)
+WHERE category_name IN (
+    SELECT category_name FROM (
+        SELECT category_name, SUM(total_amount) AS total_amount_sum
+        FROM (
+            -- Poliklinik
+            SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+                   SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+            FROM services s
+            JOIN operation_details op ON s.id = op.service_id
+            JOIN operations o ON o.id = op.operation_id
+            JOIN service_categories sc ON sc.id = s.category_id
+            JOIN groups gr ON op.group_id = gr.id
+            WHERE o.deleted = 0
+              AND op.deleted = 0
+              AND op.status > 2
+              AND op.status <> 60
+              AND o.is_operation = 0
+              AND o.document_date >= :startDate
+              AND o.document_date < :endDatePlusOne
+            GROUP BY sc.name
+
+            UNION ALL
+
+            -- Emeliyyat
+            SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+                   SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+            FROM services s
+            JOIN operation_details op ON s.id = op.service_id
+            JOIN operations o ON o.id = op.operation_id
+            JOIN service_categories sc ON sc.id = s.category_id
+            JOIN groups gr ON op.group_id = gr.id
+            WHERE o.deleted = 0
+              AND op.deleted = 0
+              AND o.is_operation = 1
+              AND op.tab_index IN (1, 2)
+              AND op.operation_date >= :startDate
+              AND op.operation_date < :endDatePlusOne
+              AND (op.SERVICE_PRICE_INCLUDED = 0 OR op.SERVICE_PRICE_INCLUDED IS NULL)
+            GROUP BY sc.name
+        )
+        GROUP BY category_name
+        ORDER BY SUM(total_amount) DESC
+    )
+    WHERE ROWNUM <= 5
+)
+UNION ALL
+SELECT CAST('Digərləri' AS NVARCHAR2(100)) category_name, SUM(total_amount_sum)
+FROM (
+    SELECT category_name, SUM(total_amount) total_amount_sum
+    FROM (
+        -- Poliklinik
+        SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+               SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+        FROM services s
+        JOIN operation_details op ON s.id = op.service_id
+        JOIN operations o ON o.id = op.operation_id
+        JOIN service_categories sc ON sc.id = s.category_id
+        JOIN groups gr ON op.group_id = gr.id
+        WHERE o.deleted = 0
+          AND op.deleted = 0
+          AND op.status > 2
+          AND op.status <> 60
+          AND o.is_operation = 0
+          AND o.document_date >= :startDate
+          AND o.document_date < :endDatePlusOne
+        GROUP BY sc.name
+
+        UNION ALL
+
+        -- Emeliyyat
+        SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+               SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+        FROM services s
+        JOIN operation_details op ON s.id = op.service_id
+        JOIN operations o ON o.id = op.operation_id
+        JOIN service_categories sc ON sc.id = s.category_id
+        JOIN groups gr ON op.group_id = gr.id
+        WHERE o.deleted = 0
+          AND op.deleted = 0
+          AND o.is_operation = 1
+          AND op.tab_index IN (1, 2)
+          AND op.operation_date >= :startDate
+          AND op.operation_date < :endDatePlusOne
+          AND (op.SERVICE_PRICE_INCLUDED = 0 OR op.SERVICE_PRICE_INCLUDED IS NULL)
+        GROUP BY sc.name
+    )
+    GROUP BY category_name
+    HAVING category_name NOT IN (
+        SELECT category_name FROM (
+            SELECT category_name
+            FROM (
+                SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+                       SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+                FROM services s
+                JOIN operation_details op ON s.id = op.service_id
+                JOIN operations o ON o.id = op.operation_id
+                JOIN service_categories sc ON sc.id = s.category_id
+                JOIN groups gr ON op.group_id = gr.id
+                WHERE o.deleted = 0
+                  AND op.deleted = 0
+                  AND op.status > 2
+                  AND op.status <> 60
+                  AND o.is_operation = 0
+                  AND o.document_date >= :startDate
+                  AND o.document_date < :endDatePlusOne
+                GROUP BY sc.name
+
+                UNION ALL
+
+                SELECT CAST(sc.name AS NVARCHAR2(100)) category_name,
+                       SUM(CASE WHEN gr.group_type = 1 THEN op.paid_amount ELSE op.paid_amount + op.group_amount END) total_amount
+                FROM services s
+                JOIN operation_details op ON s.id = op.service_id
+                JOIN operations o ON o.id = op.operation_id
+                JOIN service_categories sc ON sc.id = s.category_id
+                JOIN groups gr ON op.group_id = gr.id
+                WHERE o.deleted = 0
+                  AND op.deleted = 0
+                  AND o.is_operation = 1
+                  AND op.tab_index IN (1, 2)
+                  AND op.operation_date >= :startDate
+                  AND op.operation_date < :endDatePlusOne
+                  AND (op.SERVICE_PRICE_INCLUDED = 0 OR op.SERVICE_PRICE_INCLUDED IS NULL)
+                GROUP BY sc.name
+            )
+            GROUP BY category_name
+            ORDER BY SUM(total_amount) DESC
+        )
+        WHERE ROWNUM <= 5
+    )
+)
+ORDER BY total_amount_sum DESC
+";
 
             var endDatePlusOne = endDate.AddDays(1);
 
@@ -378,11 +544,12 @@ and od.SERVICE_PRICE_INCLUDED=0) sub
                 reader => new Xidmet_Categoryasi
                 {
                     CategoryName = reader["category_name"].ToString(),
-                    TotalPrice = reader.GetDecimal(reader.GetOrdinal("total_amount"))
+                    TotalPrice = reader.GetDecimal(reader.GetOrdinal("total_amount_sum"))
                 },
                 startDate,
                 endDate
             );
+
 
 
             return new Dovriyye_Statistikasi
