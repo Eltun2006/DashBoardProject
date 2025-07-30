@@ -10,6 +10,7 @@ namespace DashBoardProject.Repository
         private readonly int _InsuranceID;
         private readonly int _DermanID;
         private readonly int _SerfiyyatID;
+        private readonly int _DepartmentID;
 
         public DashBoardRepo(IConfiguration configuration)
         {
@@ -17,6 +18,7 @@ namespace DashBoardProject.Repository
             _InsuranceID = int.Parse(_configuration["AppSettings:Insurance_ID"]);
             _DermanID = int.Parse(_configuration["AppSettings:Derman_ID"]);
             _SerfiyyatID = int.Parse(_configuration["AppSettings:Serfiyyat_ID"]);
+            _DepartmentID = int.Parse(_configuration["AppSettings:Department_ID"]);
         }
 
         public FullDashBoardModel FullDashBoardMetod(DateTime? startDate = null, DateTime? endDate = null, int? insuranceID = null, int? DermanID = null, int? SerfiyyatID = null)
@@ -73,7 +75,7 @@ namespace DashBoardProject.Repository
                                     FROM Payment_Accounts pa
                                     INNER JOIN Payments p 
                                         ON pa.Id = p.Debit_Id 
-                                        AND p.Payment_Date BETWEEN :startDate AND :endDate 
+                                        AND p.Payment_Date BETWEEN :startDate AND :endDate+1 
                                         AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
                                     GROUP BY pa.Account_Type
                                 )";
@@ -89,7 +91,7 @@ namespace DashBoardProject.Repository
                                     FROM Payment_Accounts pa
                                     INNER JOIN Payments p 
                                         ON pa.Id = p.Credit_Id 
-                                        AND p.Payment_Date BETWEEN :startDate AND :endDate
+                                        AND p.Payment_Date BETWEEN :startDate AND :endDate+1
                                         AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
                                     GROUP BY pa.Account_Type
                                 )";
@@ -104,7 +106,7 @@ namespace DashBoardProject.Repository
                                         SUM(p.amount) AS amount
                                     FROM payments p
                                     INNER JOIN payment_accounts pa ON p.debit_id = pa.id
-                                    WHERE p.payment_date < :endDatePlusOne
+                                    WHERE p.payment_date < :endDatePlusOne+1
                                     GROUP BY pa.account_type
 
                                     UNION ALL
@@ -186,7 +188,7 @@ namespace DashBoardProject.Repository
                             WHEN g.group_type = 2 AND g.id = {0}
                             THEN
                                'Icbari_Sigorta'
-                            WHEN g.group_type = 2 AND g.id <> 278680
+                            WHEN g.group_type = 2 AND g.id <> {0}
                             THEN
                                'Diger_Sigortalar'
                             WHEN g.group_type = 3
@@ -221,7 +223,7 @@ namespace DashBoardProject.Repository
                             WHEN g.group_type = 2 AND g.id = {1}
                             THEN
                                'Icbari_Sigorta'
-                            WHEN g.group_type = 2 AND g.id <> 278680
+                            WHEN g.group_type = 2 AND g.id <> {1}
                             THEN
                                'Diger_Sigortalar'
                             WHEN g.group_type = 3
@@ -247,8 +249,43 @@ namespace DashBoardProject.Repository
                                AND od.deleted = 0
                                AND od.operation_date >= :startDate
                                AND od.operation_date < :endDatePlusOne
-                         JOIN groups g ON od.GROUP_ID = g.id) sub
-        GROUP BY Qrup) final",_InsuranceID, _InsuranceID);
+                         JOIN groups g ON od.GROUP_ID = g.id
+
+                  UNION ALL
+                  SELECT 
+                         CASE
+                            WHEN g.group_type = 2 AND g.id = {1}
+                            THEN
+                               'Icbari_Sigorta'
+                            WHEN g.group_type = 2 AND g.id <> {1}
+                            THEN
+                               'Diger_Sigortalar'
+                            WHEN g.group_type = 3
+                            THEN
+                               'Endirimler'
+                            ELSE
+                               'Oz_Hesabina'
+                         END
+                            AS Qrup, 
+                         CASE
+                       WHEN g.group_type = 1 THEN od.paid_amount
+                       ELSE od.paid_amount + od.group_amount END AMOUNT
+                    FROM patients p
+                         JOIN
+                         operations o
+                            ON     p.id = o.patient_id
+                               AND o.deleted = 0
+                               AND o.is_operation = 1
+                         JOIN
+                         operation_details od
+                            ON     od.operation_id = o.id
+                               AND od.tab_index = 2
+                               AND od.deleted = 0
+                               AND od.operation_date >= :startDate
+                               AND od.operation_date < :endDatePlusOne
+                         JOIN groups g ON od.GROUP_ID = g.id
+and od.SERVICE_PRICE_INCLUDED=0) sub
+        GROUP BY Qrup) final", _InsuranceID, _InsuranceID);
 
             var XidmetTipiSql = @"SELECT  
                                     'Poliklinik' 
@@ -428,88 +465,87 @@ namespace DashBoardProject.Repository
 
         private Mal_Material_Hereketleri GetMalMaterialBalance(DateTime startDate, DateTime endDate, int? DermanID, int? SerfiyyayID)
         {
-            var IlinkQaliqSql = String.Format(@"SELECT
-                                                ProductGroupType,
-                                                SUM(TotalAmount) AS TotalAmount
-                                            FROM
-                                            (
-                                                SELECT
-                                                    CASE 
-                                                        WHEN G.ID = {0} THEN 'Derman'
-                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
-                                                        ELSE 'Other'
-                                                    END AS ProductGroupType,
-                                                    NVL(SUM(
-                                                        CASE
-                                                            WHEN GM.DOCUMENT_TYPE_CODE = 1 THEN GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE
-                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE)
-                                                            ELSE 0
-                                                        END
-                                                    ), 0) AS TotalAmount
-                                                FROM GOODS_MOTION GM
-                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                                WHERE GM.DELETED = 0
-                                                  AND GD.DELETED = 0
-                                                  AND GM.STATUS = 3
-                                                  AND GM.INVOICE_DATE < :startDate
-                                                  AND GM.DOCUMENT_TYPE_CODE = 1
-                                                  AND G.ID IN ({0}, {1})
-                                                GROUP BY G.ID
 
-                                                UNION ALL
+            var IlinkQaliqSql = String.Format(@"
+    WITH DP AS (
+        SELECT ID, NAME
+        FROM DEPARTMENTS
+        WHERE DELETED = 0 
+        CONNECT BY PRIOR ID = PARENT_ID
+        START WITH id = {2}
+    )
+    SELECT
+        ProductGroupType,
+        SUM(TotalAmount) AS TotalAmount,
+        SUM(TotalQuantity) AS TotalQuantity
+    FROM (
+        SELECT
+            CASE 
+                WHEN G.ID = {0} THEN 'Derman'
+                WHEN G.ID = {1} THEN 'Serfiyyat'
+                ELSE 'Other'
+            END AS ProductGroupType,
+            NVL(SUM(GD.BOX_QUANTITY * P.QUANTITY_IN_BOX * GD.SUPPLIER_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE), 0) AS TotalAmount,
+            NVL(SUM(GD.BOX_QUANTITY * P.QUANTITY_IN_BOX + GD.QUANTITY), 0) AS TotalQuantity
+        FROM GOODS_MOTION GM
+        INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+        INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+        INNER JOIN DP ON GM.TO_ID = DP.ID
+        WHERE GM.DELETED = 0
+          AND GD.DELETED = 0
+          AND GM.STATUS = 3
+          AND GM.INVOICE_DATE < :startDate
+          AND GM.DOCUMENT_TYPE_CODE = 1
+          AND G.ID IN ({0}, {1})
+        GROUP BY G.ID
 
-                                                SELECT
-                                                    CASE 
-                                                        WHEN G.ID = {0} THEN 'Derman'
-                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
-                                                        ELSE 'Other'
-                                                    END AS ProductGroupType,
-                                                    NVL(SUM(
-                                                        CASE
-                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * INCOME_GD.BOX_PRICE + GD.QUANTITY * INCOME_GD.SUPPLIER_PRICE)
-                                                            ELSE 0
-                                                        END
-                                                    ), 0) AS TotalAmount
-                                                FROM GOODS_MOTION GM
-                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                                INNER JOIN GOODS_DETAILS INCOME_GD ON GD.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
-                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                                WHERE GM.DELETED = 0
-                                                  AND GD.DELETED = 0
-                                                  AND GM.STATUS = 3
-                                                  AND GM.INVOICE_DATE < :startDate
-                                                  AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
-                                                  AND G.ID IN ({0}, {1})
-                                                GROUP BY G.ID
+        UNION ALL
 
-                                                union all
+        SELECT
+            CASE 
+                WHEN G.ID = {0} THEN 'Derman'
+                WHEN G.ID = {1} THEN 'Serfiyyat'
+                ELSE 'Other'
+            END AS ProductGroupType,
+            NVL(SUM(-1 * (GD.BOX_QUANTITY * P.QUANTITY_IN_BOX * INCOME_GD.SUPPLIER_PRICE + GD.QUANTITY * INCOME_GD.SUPPLIER_PRICE)), 0) AS TotalAmount,
+            NVL(SUM(-1 * (GD.BOX_QUANTITY * P.QUANTITY_IN_BOX + GD.QUANTITY)), 0) AS TotalQuantity
+        FROM GOODS_MOTION GM
+        INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+        INNER JOIN GOODS_DETAILS INCOME_GD ON GD.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+        INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+        INNER JOIN DP ON GM.FROM_ID = DP.ID
+        WHERE GM.DELETED = 0
+          AND GD.DELETED = 0
+          AND GM.STATUS = 3
+          AND GM.INVOICE_DATE < :startDate
+          AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
+          AND G.ID IN ({0}, {1})
+        GROUP BY G.ID
 
-                                                SELECT CASE
-                                                          WHEN G.ID = {4} THEN 'Derman'
-                                                          WHEN G.ID = {5} THEN 'Serfiyyat'
-                                                          ELSE 'Other'
-                                                       END
-                                                          AS ProductGroupType,
-                                                       NVL (
-                                                          SUM (
-                                                             - (  UP.BOX_QUANTITY * INCOME_GD.BOX_PRICE
-                                                                + UP.QUANTITY * INCOME_GD.SUPPLIER_PRICE)),
-                                                          0)
-                                                          AS TotalAmount
-                                                  FROM USED_PRODUCTS UP
-                                                       INNER JOIN GOODS_DETAILS INCOME_GD
-                                                          ON UP.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
-                                                       INNER JOIN PRODUCTS P ON UP.PRODUCT_ID = P.ID
-                                                       INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                                 WHERE     UP.DELETED = 0
-                                                       AND UP.use_DATE < :startDate
-                                                       AND G.ID IN ({6}, {7})
-                                              GROUP BY G.ID
-                                                            ) t
-                                                                GROUP BY ProductGroupType", _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID,_DermanID, _SerfiyyatID,_DermanID, _SerfiyyatID);
+        UNION ALL
+
+        SELECT
+            CASE
+                WHEN G.ID = {0} THEN 'Derman'
+                WHEN G.ID = {1} THEN 'Serfiyyat'
+                ELSE 'Other'
+            END AS ProductGroupType,
+            NVL(SUM(-1 * (UP.BOX_QUANTITY * INCOME_GD.SUPPLIER_PRICE * P.QUANTITY_IN_BOX + UP.QUANTITY * INCOME_GD.SUPPLIER_PRICE)), 0) AS TotalAmount,
+            NVL(SUM(-1 * (UP.BOX_QUANTITY * P.QUANTITY_IN_BOX + UP.QUANTITY)), 0) AS TotalQuantity
+        FROM USED_PRODUCTS UP
+        INNER JOIN GOODS_DETAILS INCOME_GD ON UP.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+        INNER JOIN PRODUCTS P ON UP.PRODUCT_ID = P.ID
+        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+        INNER JOIN DP ON UP.DEPARTMENT_ID = DP.ID
+        WHERE UP.DELETED = 0
+          AND UP.USE_DATE < :startDate
+          AND G.ID IN ({0}, {1})
+        GROUP BY G.ID
+    ) t
+    GROUP BY ProductGroupType
+", _DermanID, _SerfiyyatID, _DepartmentID);
 
             var MedaxilSql = String.Format(@"SELECT
                                     ProductGroupType,
@@ -556,7 +592,7 @@ namespace DashBoardProject.Repository
                                                 WHERE GM.DELETED = 0
                                                   AND GM.STATUS = 3
                                                   AND GD.DELETED = 0
-                                                  AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
+                                                  AND GM.DOCUMENT_TYPE_CODE in (19)
                                                   AND GM.INVOICE_DATE BETWEEN :startDate AND :endDate
                                                   AND G.ID IN ({0}, {1})
                                             ) t
@@ -590,88 +626,86 @@ namespace DashBoardProject.Repository
                     GROUP BY ProductGroupType", _DermanID, _SerfiyyatID);
 
 
-            var SonQaliqSql = String.Format(@"SELECT
-                                                ProductGroupType,
-                                                SUM(TotalAmount) AS TotalAmount
-                                            FROM
-                                            (
-                                                SELECT
-                                                    CASE 
-                                                        WHEN G.ID = {0} THEN 'Derman'
-                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
-                                                        ELSE 'Other'
-                                                    END AS ProductGroupType,
-                                                    NVL(SUM(
-                                                        CASE
-                                                            WHEN GM.DOCUMENT_TYPE_CODE = 1 THEN GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE
-                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * GD.BOX_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE)
-                                                            ELSE 0
-                                                        END
-                                                    ), 0) AS TotalAmount
-                                                FROM GOODS_MOTION GM
-                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                                WHERE GM.DELETED = 0
-                                                  AND GD.DELETED = 0
-                                                  AND GM.STATUS = 3
-                                                  AND GM.INVOICE_DATE < :endDatePlusOne
-                                                  AND GM.DOCUMENT_TYPE_CODE = 1
-                                                  AND G.ID IN ({0}, {1})
-                                                GROUP BY G.ID
+            var SonQaliqSql = String.Format(@"
+    WITH DP AS (
+        SELECT ID, NAME
+        FROM DEPARTMENTS
+        WHERE DELETED = 0 
+        CONNECT BY PRIOR ID = PARENT_ID
+        START WITH id = {2}
+    )
+    SELECT
+        ProductGroupType,
+        SUM(TotalAmount) AS TotalAmount,
+        SUM(TotalQuantity) AS TotalQuantity
+    FROM (
+        SELECT
+            CASE 
+                WHEN G.ID = {0} THEN 'Derman'
+                WHEN G.ID = {1} THEN 'Serfiyyat'
+                ELSE 'Other'
+            END AS ProductGroupType,
+            NVL(SUM(GD.BOX_QUANTITY * P.QUANTITY_IN_BOX * GD.SUPPLIER_PRICE + GD.QUANTITY * GD.SUPPLIER_PRICE), 0) AS TotalAmount,
+            NVL(SUM(GD.BOX_QUANTITY * P.QUANTITY_IN_BOX + GD.QUANTITY), 0) AS TotalQuantity
+        FROM GOODS_MOTION GM
+        INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+        INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+        INNER JOIN DP ON GM.TO_ID = DP.ID
+        WHERE GM.DELETED = 0
+          AND GD.DELETED = 0
+          AND GM.STATUS = 3
+          AND GM.INVOICE_DATE < :endDatePlusOne
+          AND GM.DOCUMENT_TYPE_CODE = 1
+          AND G.ID IN ({0}, {1})
+        GROUP BY G.ID
 
-                                                UNION ALL
+        UNION ALL
 
-                                                SELECT
-                                                    CASE 
-                                                        WHEN G.ID = {0} THEN 'Derman'
-                                                        WHEN G.ID = {1} THEN 'Serfiyyat'
-                                                        ELSE 'Other'
-                                                    END AS ProductGroupType,
-                                                    NVL(SUM(
-                                                        CASE
-                                                            WHEN GM.DOCUMENT_TYPE_CODE IN (3, 19) THEN -(GD.BOX_QUANTITY * INCOME_GD.BOX_PRICE + GD.QUANTITY * INCOME_GD.SUPPLIER_PRICE)
-                                                            ELSE 0
-                                                        END
-                                                    ), 0) AS TotalAmount
-                                                FROM GOODS_MOTION GM
-                                                INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
-                                                INNER JOIN GOODS_DETAILS INCOME_GD ON GD.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
-                                                INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
-                                                INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                                WHERE GM.DELETED = 0
-                                                  AND GD.DELETED = 0
-                                                  AND GM.STATUS = 3
-                                                  AND GM.INVOICE_DATE < :endDatePlusOne
-                                                  AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
-                                                  AND G.ID IN ({0}, {1})
-                                                GROUP BY G.ID
+        SELECT
+            CASE 
+                WHEN G.ID = {0} THEN 'Derman'
+                WHEN G.ID = {1} THEN 'Serfiyyat'
+                ELSE 'Other'
+            END AS ProductGroupType,
+            NVL(SUM(-1 * (GD.BOX_QUANTITY * P.QUANTITY_IN_BOX * INCOME_GD.SUPPLIER_PRICE + GD.QUANTITY * INCOME_GD.SUPPLIER_PRICE)), 0) AS TotalAmount,
+            NVL(SUM(-1 * (GD.BOX_QUANTITY * P.QUANTITY_IN_BOX + GD.QUANTITY)), 0) AS TotalQuantity
+        FROM GOODS_MOTION GM
+        INNER JOIN GOODS_DETAILS GD ON GM.ID = GD.GOODS_MOTION_ID
+        INNER JOIN GOODS_DETAILS INCOME_GD ON GD.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+        INNER JOIN PRODUCTS P ON GD.PRODUCT_ID = P.ID
+        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+        INNER JOIN DP ON GM.FROM_ID = DP.ID
+        WHERE GM.DELETED = 0
+          AND GD.DELETED = 0
+          AND GM.STATUS = 3
+          AND GM.INVOICE_DATE < :endDatePlusOne
+          AND GM.DOCUMENT_TYPE_CODE IN (3, 19)
+          AND G.ID IN ({0}, {1})
+        GROUP BY G.ID
 
-                                                union all
+        UNION ALL
 
-                                                SELECT CASE
-                                                          WHEN G.ID = {4} THEN 'Derman'
-                                                          WHEN G.ID = {5} THEN 'Serfiyyat'
-                                                          ELSE 'Other'
-                                                       END
-                                                          AS ProductGroupType,
-                                                       NVL (
-                                                          SUM (
-                                                             - (  UP.BOX_QUANTITY * INCOME_GD.BOX_PRICE
-                                                                + UP.QUANTITY * INCOME_GD.SUPPLIER_PRICE)),
-                                                          0)
-                                                          AS TotalAmount
-                                                  FROM USED_PRODUCTS UP
-                                                       INNER JOIN GOODS_DETAILS INCOME_GD
-                                                          ON UP.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
-                                                       INNER JOIN PRODUCTS P ON UP.PRODUCT_ID = P.ID
-                                                       INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
-                                                 WHERE     UP.DELETED = 0
-                                                       AND UP.use_DATE < :endDatePlusOne
-                                                       AND G.ID IN ({6}, {7})
-                                              GROUP BY G.ID
-                                                            ) t
-                                                                GROUP BY ProductGroupType", _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID, _DermanID, _SerfiyyatID);
+        SELECT
+            CASE
+                WHEN G.ID = {0} THEN 'Derman'
+                WHEN G.ID = {1} THEN 'Serfiyyat'
+                ELSE 'Other'
+            END AS ProductGroupType,
+            NVL(SUM(-1 * (UP.BOX_QUANTITY * INCOME_GD.SUPPLIER_PRICE * P.QUANTITY_IN_BOX + UP.QUANTITY * INCOME_GD.SUPPLIER_PRICE)), 0) AS TotalAmount,
+            NVL(SUM(-1 * (UP.BOX_QUANTITY * P.QUANTITY_IN_BOX + UP.QUANTITY)), 0) AS TotalQuantity
+        FROM USED_PRODUCTS UP
+        INNER JOIN GOODS_DETAILS INCOME_GD ON UP.INCOME_GOODS_DETAIL_ID = INCOME_GD.ID
+        INNER JOIN PRODUCTS P ON UP.PRODUCT_ID = P.ID
+        INNER JOIN PRODUCT_GROUPS G ON P.PRODUCT_GROUP_ID = G.ID
+        INNER JOIN DP ON UP.DEPARTMENT_ID = DP.ID
+        WHERE UP.DELETED = 0
+          AND UP.USE_DATE < :endDatePlusOne
+          AND G.ID IN ({0}, {1})
+        GROUP BY G.ID
+    ) t
+    GROUP BY ProductGroupType
+", _DermanID, _SerfiyyatID, _DepartmentID);
 
             var endDatePlusOne = endDate.AddDays(1);
 
@@ -689,7 +723,7 @@ namespace DashBoardProject.Repository
                 Silinme = Silinme ?? new Mal_Material(),
                 SonQaliq = SonQaliq ?? new Mal_Material(),
             };
-        }
+        }   
 
         private Mal_Material ExecuteMaterialQuery(string sql, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null, int? dermanID = null, int? serfiyyatID = null)
         {
