@@ -172,98 +172,98 @@ namespace DashBoardProject.Repository
         private Dovriyye_Statistikasi GetDovriyyeBalance(DateTime startDate, DateTime endDate, int? InsuranceID)
         {
             var TeskilatUzreSql = String.Format(@"SELECT SUM (CASE WHEN Qrup = 'Icbari_Sigorta' THEN Pasiyent_Sayi ELSE 0 END)
-          AS Icbari_Sigorta,
-       SUM (
-          CASE WHEN Qrup = 'Diger_Sigortalar' THEN Pasiyent_Sayi ELSE 0 END)
-          AS Diger_Sigorta,
-       SUM (CASE WHEN Qrup = 'Endirimler' THEN Pasiyent_Sayi ELSE 0 END)
-          AS Endirimler,
-       SUM (CASE WHEN Qrup = 'Oz_Hesabina' THEN Pasiyent_Sayi ELSE 0 END)
-          AS Oz_Hesabina
-  FROM (  SELECT Qrup,
-                 SUM (AMOUNT
-                    )
-                    AS Pasiyent_Sayi
-            FROM (SELECT CASE
-                            WHEN g.group_type = 2 AND g.id = {0}
-                            THEN
-                               'Icbari_Sigorta'
-                            WHEN g.group_type = 2 AND g.id <> {0}
-                            THEN
-                               'Diger_Sigortalar'
-                            WHEN g.group_type = 3
-                            THEN
-                               'Endirimler'
-                            ELSE
-                               'Oz_Hesabina'
-                         END
-                            AS Qrup,
-                         CASE
-                       WHEN g.group_type = 1 THEN od.paid_amount
-                       ELSE od.paid_amount + od.group_amount
-                    END AMOUNT
-                    FROM patients p
-                         JOIN
-                         operations o
-                            ON     p.id = o.patient_id
-                               AND o.deleted = 0
-                               AND o.is_operation = 0
-                         JOIN
-                         operation_details od
-                            ON     od.operation_id = o.id
-                               AND od.status > 2
-                               AND od.status <> 60
-                               AND od.deleted = 0
-                               AND o.document_date >= :startDate
-                               AND o.document_date < :endDatePlusOne
-                         JOIN groups g ON od.GROUP_ID = g.id
-                  UNION ALL
-                  SELECT 
-                         CASE
-                            WHEN g.group_type = 2 AND g.id = {1}
-                            THEN
-                               'Icbari_Sigorta'
-                            WHEN g.group_type = 2 AND g.id <> {1}
-                            THEN
-                               'Diger_Sigortalar'
-                            WHEN g.group_type = 3
-                            THEN
-                               'Endirimler'
-                            ELSE
-                               'Oz_Hesabina'
-                         END
-                            AS Qrup, 
-                         CASE
-                       WHEN g.group_type = 1 THEN od.paid_amount
-                       ELSE od.paid_amount + od.group_amount END AMOUNT
-                    FROM patients p
-                         JOIN
-                         operations o
-                            ON     p.id = o.patient_id
-                               AND o.deleted = 0
-                               AND o.is_operation = 1
-                         JOIN
-                         operation_details od
-                            ON     od.operation_id = o.id
-                               AND od.tab_index = 1
-                               AND od.deleted = 0
-                               AND od.operation_date >= :startDate
-                               AND od.operation_date < :endDatePlusOne
-                         JOIN groups g ON od.GROUP_ID = g.id
+              AS Icbari_Sigorta,
+           SUM (
+              CASE WHEN Qrup = 'Diger_Sigortalar' THEN Pasiyent_Sayi ELSE 0 END)
+              AS Diger_Sigorta,
+           SUM (CASE WHEN Qrup = 'Endirimler' THEN Pasiyent_Sayi ELSE 0 END)
+              AS Endirimler,
+           SUM (CASE WHEN Qrup = 'Oz_Hesabina' THEN Pasiyent_Sayi ELSE 0 END)
+              AS Oz_Hesabina
+      FROM (  SELECT Qrup,
+                     SUM (AMOUNT
+                        )
+                        AS Pasiyent_Sayi
+                FROM (SELECT CASE
+                                WHEN g.group_type = 2 AND g.id = {0}
+                                THEN
+                                   'Icbari_Sigorta'
+                                WHEN g.group_type = 2 AND g.id <> {0}
+                                THEN
+                                   'Diger_Sigortalar'
+                                WHEN g.group_type = 3
+                                THEN
+                                   'Endirimler'
+                                ELSE
+                                   'Oz_Hesabina'
+                             END
+                                AS Qrup,
+                             CASE
+                           WHEN g.group_type = 1 THEN od.paid_amount
+                           ELSE od.paid_amount + od.group_amount
+                        END AMOUNT
+                        FROM patients p
+                             JOIN
+                             operations o
+                                ON     p.id = o.patient_id
+                                   AND o.deleted = 0
+                                   AND o.is_operation = 0
+                             JOIN
+                             operation_details od
+                                ON     od.operation_id = o.id
+                                   AND od.status > 2
+                                   AND od.status <> 60
+                                   AND od.deleted = 0
+                                   AND o.document_date >= :startDate
+                                   AND o.document_date < :endDatePlusOne
+                             JOIN groups g ON od.GROUP_ID = g.id
+                      UNION ALL
+                      SELECT 
+                             CASE
+                                WHEN g.group_type = 2 AND g.id = {1}
+                                THEN
+                                   'Icbari_Sigorta'
+                                WHEN g.group_type = 2 AND g.id <> {1}
+                                THEN
+                                   'Diger_Sigortalar'
+                                WHEN g.group_type = 3
+                                THEN
+                                   'Endirimler'
+                                ELSE
+                                   'Oz_Hesabina'
+                             END
+                                AS Qrup, 
+                             CASE
+                           WHEN g.group_type = 1 THEN od.paid_amount
+                           ELSE od.paid_amount + od.group_amount END AMOUNT
+                        FROM patients p
+                             JOIN
+                             operations o
+                                ON     p.id = o.patient_id
+                                   AND o.deleted = 0
+                                   AND o.is_operation = 1
+                             JOIN
+                             operation_details od
+                                ON     od.operation_id = o.id
+                                   AND od.tab_index = 1
+                                   AND od.deleted = 0
+                                   AND od.operation_date >= :startDate
+                                   AND od.operation_date < :endDatePlusOne
+                             JOIN groups g ON od.GROUP_ID = g.id
 
-                  UNION ALL
-                  SELECT 
-                         CASE
-                            WHEN g.group_type = 2 AND g.id = {1}
-                            THEN
-                               'Icbari_Sigorta'
-                            WHEN g.group_type = 2 AND g.id <> {1}
-                            THEN
-                               'Diger_Sigortalar'
-                            WHEN g.group_type = 3
-                            THEN
-                               'Endirimler'
-                            ELSE
+                      UNION ALL
+                      SELECT 
+                             CASE
+                                WHEN g.group_type = 2 AND g.id = {1}
+                                THEN
+                                   'Icbari_Sigorta'
+                                WHEN g.group_type = 2 AND g.id <> {1}
+                                THEN
+                                   'Diger_Sigortalar'
+                                WHEN g.group_type = 3
+                                THEN
+                                   'Endirimler'
+                                ELSE
                                'Oz_Hesabina'
                          END
                             AS Qrup, 
@@ -288,47 +288,46 @@ and od.SERVICE_PRICE_INCLUDED=0) sub
         GROUP BY Qrup) final", _InsuranceID, _InsuranceID);
 
             var XidmetTipiSql = @"SELECT  
-    'Poliklinik' AS service_type,
-    SUM(
-        CASE
-            WHEN g.group_type = 1 THEN od.paid_amount
-            ELSE od.paid_amount + od.group_amount
-        END
-    ) AS total_price
-FROM operations o
-JOIN operation_details od ON od.operation_id = o.id
-JOIN groups g ON od.GROUP_ID = g.id
-WHERE od.status > 2
-  AND od.status <> 60
-  AND od.deleted = 0
-  AND o.deleted = 0
-  AND o.is_operation = 0
-  AND o.document_date >= :startDate
-  AND o.document_date < :endDatePlusOne
+                                    'Poliklinik' AS service_type,
+                                    SUM(
+                                        CASE
+                                            WHEN g.group_type = 1 THEN od.paid_amount
+                                            ELSE od.paid_amount + od.group_amount
+                                        END
+                                    ) AS total_price
+                                FROM operations o
+                                JOIN operation_details od ON od.operation_id = o.id
+                                JOIN groups g ON od.GROUP_ID = g.id
+                                WHERE od.status > 2
+                                  AND od.status <> 60
+                                  AND od.deleted = 0
+                                  AND o.deleted = 0
+                                  AND o.is_operation = 0
+                                  AND o.document_date >= :startDate
+                                  AND o.document_date < :endDatePlusOne
 
-UNION ALL
+                                UNION ALL
 
-SELECT
-    'Emeliyyat' AS service_type,
-    SUM(
-        CASE
-            WHEN g.group_type = 1 THEN od.paid_amount
-            ELSE od.paid_amount + od.group_amount
-        END
-    ) AS total_price
-FROM operations o
-JOIN operation_details od ON od.operation_id = o.id
-JOIN groups g ON od.GROUP_ID = g.id
-WHERE od.tab_index IN (1, 2)
-  AND od.deleted = 0
-  AND (od.SERVICE_PRICE_INCLUDED = 0 OR od.SERVICE_PRICE_INCLUDED IS NULL)  -- Əgər şərt lazımdırsa
-  AND o.deleted = 0
-  AND o.is_operation = 1
-  AND od.operation_date >= :startDate
-  AND od.operation_date < :endDatePlusOne";
+                                SELECT
+                                    'Emeliyyat' AS service_type,
+                                    SUM(
+                                        CASE
+                                            WHEN g.group_type = 1 THEN od.paid_amount
+                                            ELSE od.paid_amount + od.group_amount
+                                        END
+                                    ) AS total_price
+                                FROM operations o
+                                JOIN operation_details od ON od.operation_id = o.id
+                                JOIN groups g ON od.GROUP_ID = g.id
+                                WHERE od.tab_index IN (1, 2)
+                                  AND od.deleted = 0
+                                  AND (od.SERVICE_PRICE_INCLUDED = 0 OR od.SERVICE_PRICE_INCLUDED IS NULL)  -- Əgər şərt lazımdırsa
+                                  AND o.deleted = 0
+                                  AND o.is_operation = 1
+                                  AND od.operation_date >= :startDate
+                                  AND od.operation_date < :endDatePlusOne";
 
-
-            var Xidmet_CategoryasiSql = @"SELECT category_name, total_amount_sum
+            var Xidmet_CategoryasiSql = @"  SELECT category_name, total_amount_sum
 FROM (
     SELECT category_name, SUM(total_amount) total_amount_sum
     FROM (
@@ -501,8 +500,7 @@ FROM (
         WHERE ROWNUM <= 5
     )
 )
-ORDER BY total_amount_sum DESC
-";
+ORDER BY total_amount_sum DESC";
 
             var endDatePlusOne = endDate.AddDays(1);
 
@@ -547,7 +545,9 @@ ORDER BY total_amount_sum DESC
                     TotalPrice = reader.GetDecimal(reader.GetOrdinal("total_amount_sum"))
                 },
                 startDate,
-                endDate
+                endDate,
+                endDatePlusOne
+                
             );
 
 
@@ -604,7 +604,8 @@ ORDER BY total_amount_sum DESC
                                             string sql,
                                             Func<IDataReader, T> mapFunc,
                                             DateTime? startDate = null,
-                                            DateTime? endDate = null)
+                                            DateTime? endDate = null,
+                                            DateTime? endDatePlusOne = null)
         {
             var connectionString = _configuration.GetConnectionString("SqlConnection");
 
@@ -616,8 +617,9 @@ ORDER BY total_amount_sum DESC
             if (startDate.HasValue)
                 cmd.Parameters.Add(new OracleParameter("startDate", OracleDbType.Date)).Value = startDate.Value;
 
-            if (endDate.HasValue)
-                cmd.Parameters.Add(new OracleParameter("endDate", OracleDbType.Date)).Value = endDate.Value;
+            if (endDatePlusOne.HasValue)
+                cmd.Parameters.Add(new OracleParameter("endDatePlusOne", OracleDbType.Date)).Value = endDatePlusOne.Value;
+
 
             var result = new List<T>();
             using var reader = cmd.ExecuteReader();
