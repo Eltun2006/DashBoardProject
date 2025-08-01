@@ -71,7 +71,7 @@ namespace DashBoardProject.Repository
                                 FROM (
                                     SELECT 
                                         pa.Account_Type,
-                                        COALESCE(SUM(p.Amount), 0) AS Initial_Balance
+                                        SUM(p.Amount)AS Initial_Balance
                                     FROM Payment_Accounts pa
                                     INNER JOIN Payments p 
                                         ON pa.Id = p.Debit_Id 
@@ -97,28 +97,27 @@ namespace DashBoardProject.Repository
                                 )";
 
 
-            var SonQaliqSql = @"SELECT 
-                                    SUM(CASE WHEN account_type = 1146 THEN amount ELSE 0 END) AS bank,
-                                    SUM(CASE WHEN account_type = 1147 THEN amount ELSE 0 END) AS kassa
-                                FROM (
-                                    SELECT 
-                                        pa.account_type, 
-                                        SUM(p.amount) AS amount
-                                    FROM payments p
-                                    INNER JOIN payment_accounts pa ON p.debit_id = pa.id
-                                    WHERE p.payment_date < :endDatePlusOne+1
-                                    GROUP BY pa.account_type
-
-                                    UNION ALL
-
-                                    SELECT 
-                                        pa.account_type, 
-                                        -SUM(p.amount) AS amount
-                                    FROM payments p
-                                    INNER JOIN payment_accounts pa ON p.credit_id = pa.id
-                                    WHERE p.payment_date < :endDatePlusOne
-                                    GROUP BY pa.account_type
-                                )";
+            var SonQaliqSql = @"SELECT SUM (CASE WHEN account_type = 1146 THEN Initial_Balance END) AS bank,
+       SUM (CASE WHEN account_type = 1147 THEN Initial_Balance END) AS kassa 
+  FROM (  SELECT pa.Account_Type,
+                pa.name,
+                 nvl (SUM (-p.Amount), 0) AS Initial_Balance,
+                 sum(p.amount) credit,
+                 0 debet
+            FROM Payment_Accounts pa
+                 INNER JOIN Payments p
+                    ON pa.Id = p.Credit_Id AND p.Payment_Date < :endDatePlusOne
+        GROUP BY pa.Account_Type,pa.name
+        UNION ALL
+          SELECT pa.Account_Type,pa.name,
+                 nvl (SUM (p.Amount), 0) AS Initial_Balance,
+                 0 credit,
+                 sum(p.amount) debet
+            FROM Payment_Accounts pa
+                 INNER JOIN Payments p
+                    ON pa.Id = p.Debit_Id AND p.Payment_Date < :endDatePlusOne
+        GROUP BY pa.Account_Type , pa.name)
+                                ";
 
 
             var endDatePlusOne = endDate.AddDays(1);
@@ -940,8 +939,6 @@ ORDER BY total_amount_sum DESC";
 
             return result;
         }
-
-
 
     }
 
