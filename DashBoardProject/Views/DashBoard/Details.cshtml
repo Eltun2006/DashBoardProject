@@ -1,0 +1,116 @@
+﻿@model System.Data.DataTable
+
+@{
+    // Yekun dəyərləri hesabla
+    decimal totalBalance = 0;
+    decimal totalCredit = 0;
+    decimal totalDebet = 0;
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        totalBalance += Convert.ToDecimal(row["Initial_Balance"]);
+        totalCredit += Convert.ToDecimal(row["credit"]);
+        totalDebet += Convert.ToDecimal(row["debet"]);
+    }
+}
+
+<div class="balance-container">
+    <h2>💰 Bank və Kassa Balansları</h2>
+
+    <table class="custom-table">
+        <thead>
+            <tr>
+
+                <th>Name</th>
+                <th>Initial Balance</th>
+                <th>Credit</th>
+                <th>Debet</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (System.Data.DataRow row in Model.Rows)
+            {
+                <tr>
+                    
+                    <td>@row["name"]</td>
+                    <td class="balance">@row["Initial_Balance"]</td>
+                    <td class="credit">@row["credit"]</td>
+                    <td class="debet">@row["debet"]</td>
+                </tr>
+            }
+            <tr class="total-row">
+                <td colspan="2"><strong>Yekun</strong></td>
+                <td class="balance"><strong>@totalBalance</strong></td>
+                <td class="credit"><strong>@totalCredit</strong></td>
+                <td class="debet"><strong>@totalDebet</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .balance-container {
+        max-width: 900px;
+        margin: 30px auto;
+        padding: 20px;
+        background: #fdfdfd;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+        .balance-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 700;
+            color: #333;
+            letter-spacing: 1px;
+        }
+
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: 12px;
+    }
+
+        .custom-table thead {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+            color: #fff;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .custom-table th, .custom-table td {
+            padding: 14px 18px;
+            text-align: center;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .custom-table tbody tr {
+            transition: all 0.2s ease-in-out;
+        }
+
+            .custom-table tbody tr:hover {
+                background: #f1f9ff;
+                transform: scale(1.01);
+            }
+
+    /* Rənglər */
+    .balance {
+        color: #16a085;
+        font-weight: bold;
+    }
+
+    .credit {
+        color: #2980b9;
+        font-weight: 500;
+    }
+
+    .debet {
+        color: #c0392b;
+        font-weight: 500;
+    }
+
+    /* Yekun sətir */
+    .tot
