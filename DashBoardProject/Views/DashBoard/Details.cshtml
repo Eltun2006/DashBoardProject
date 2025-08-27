@@ -1,18 +1,86 @@
 ﻿@model System.Data.DataTable
 
+
 @{
     // Yekun dəyərləri hesabla
     decimal totalBalance = 0;
-    decimal totalCredit = 0;
-    decimal totalDebet = 0;
+
 
     foreach (System.Data.DataRow row in Model.Rows)
     {
         totalBalance += Convert.ToDecimal(row["Initial_Balance"]);
-        totalCredit += Convert.ToDecimal(row["credit"]);
-        totalDebet += Convert.ToDecimal(row["debet"]);
     }
 }
+
+@{
+    var balances = new List<decimal>();
+    var names = new List<string>();
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        balances.Add(Convert.ToDecimal(row["Initial_Balance"]));
+        names.Add(row["name"].ToString());
+    }
+}
+
+<script>
+    const names = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(names));
+    const balances = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(balances));
+    const totalBalance = @totalBalance; // totalBalance JS-də də mövcud oldu
+</script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<div style="text-align: right; margin: 15px;">
+    <button class="btn btn-danger" onclick="exportDashboardPDF()">PDF-ə Çıxart</button>
+    <button class="btn btn-success" onclick="exportDashboardExcel()">Excel-ə Çıxart</button>
+</div>
+
+
+<script>
+        async function exportDashboardPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+
+        // Bütün charts-ları saxlayan container
+        const dashboard = document.querySelector('body'); // ya da .Main-Container
+        const canvas = await html2canvas(dashboard, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        doc.save("Dashboard.pdf");
+    }
+
+</script>
+
+<script>
+    function exportDashboardExcel() {
+        var wb = XLSX.utils.book_new();
+
+        var data = [["Name", "Initial Balance"]];
+
+        for (let i = 0; i < names.length; i++) {
+            data.push([names[i], balances[i]]);
+        }
+
+        // Yekun balansı əlavə et
+        data.push(["Yekun", totalBalance]);
+
+        var ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Dashboard");
+        XLSX.writeFile(wb, "Dashboard.xlsx");
+    }
+
+</script>
+
+
+
 
 <div class="balance-container">
     <h2>💰 Bank və Kassa Balansları</h2>
@@ -23,8 +91,6 @@
 
                 <th>Name</th>
                 <th>Initial Balance</th>
-                <th>Credit</th>
-                <th>Debet</th>
             </tr>
         </thead>
         <tbody>
@@ -34,15 +100,12 @@
                     
                     <td>@row["name"]</td>
                     <td class="balance">@row["Initial_Balance"]</td>
-                    <td class="credit">@row["credit"]</td>
-                    <td class="debet">@row["debet"]</td>
+
                 </tr>
             }
             <tr class="total-row">
                 <td colspan="2"><strong>Yekun</strong></td>
                 <td class="balance"><strong>@totalBalance</strong></td>
-                <td class="credit"><strong>@totalCredit</strong></td>
-                <td class="debet"><strong>@totalDebet</strong></td>
             </tr>
         </tbody>
     </table>

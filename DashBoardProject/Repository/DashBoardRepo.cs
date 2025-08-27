@@ -23,7 +23,7 @@ namespace DashBoardProject.Repository
 
         public FullDashBoardModel FullDashBoardMetod(DateTime? startDate = null, DateTime? endDate = null, int? insuranceID = null, int? DermanID = null, int? SerfiyyatID = null)
         {
-            var start = startDate ?? DateTime.Today.AddDays(-1);
+            var start = startDate ?? DateTime.Today.AddMonths(-1);
             var end = endDate ?? DateTime.Today;
     
 
@@ -541,7 +541,10 @@ ORDER BY total_amount_sum DESC";
                 reader => new Xidmet_Categoryasi
                 {
                     CategoryName = reader["category_name"].ToString(),
-                    TotalPrice = reader.GetDecimal(reader.GetOrdinal("total_amount_sum"))
+                    TotalPrice = reader.IsDBNull(reader.GetOrdinal("total_amount_sum"))
+                    ? 0
+                    : reader.GetDecimal(reader.GetOrdinal("total_amount_sum"))
+
                 },
                 startDate,
                 endDate,
