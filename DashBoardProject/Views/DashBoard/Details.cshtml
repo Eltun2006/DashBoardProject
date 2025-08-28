@@ -5,11 +5,12 @@
     // Yekun dəyərləri hesabla
     decimal totalBalance = 0;
 
-
     foreach (System.Data.DataRow row in Model.Rows)
     {
-        totalBalance += Convert.ToDecimal(row["Initial_Balance"]);
+        if (row["Initial_Balance"] != DBNull.Value)
+            totalBalance += Convert.ToDecimal(row["Initial_Balance"]);
     }
+
 }
 
 @{
@@ -18,16 +19,160 @@
 
     foreach (System.Data.DataRow row in Model.Rows)
     {
-        balances.Add(Convert.ToDecimal(row["Initial_Balance"]));
+        decimal balance = row["Initial_Balance"] != DBNull.Value ? Convert.ToDecimal(row["Initial_Balance"]) : 0;
+        balances.Add(balance);
         names.Add(row["name"].ToString());
     }
+
 }
 
+@{
+    decimal totalDebet = 0;
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        if (row["Debet"] != DBNull.Value)
+            totalDebet += Convert.ToDecimal(row["Debet"]); // <-- burada doğru dəyişəni istifadə et
+    }
+
+
+}
+
+@{
+    var Debetbalances = new List<decimal>();
+    var Debetnames = new List<string>();
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        decimal balance = row["Debet"] != DBNull.Value ? Convert.ToDecimal(row["Debet"]) : 0;
+        Debetbalances.Add(balance);
+        Debetnames.Add(row["name"].ToString());
+    }
+
+}
+
+@{
+    decimal totalCredit = 0;
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        if (row["Credit"] != DBNull.Value)
+            totalCredit += Convert.ToDecimal(row["Credit"]); // <-- burada doğru dəyişəni istifadə et
+    }
+
+
+}
+
+@{
+    var Creditbalances = new List<decimal>();
+    var Creditnames = new List<string>();
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        decimal balance = row["Credit"] != DBNull.Value ? Convert.ToDecimal(row["Credit"]) : 0;
+        Creditbalances.Add(balance);
+        Creditnames.Add(row["name"].ToString());
+    }
+
+}
+
+@{
+    decimal totalSonQaliq = 0;
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        if (row["SonQaliq"] != DBNull.Value)
+            totalSonQaliq += Convert.ToDecimal(row["SonQaliq"]); // <-- burada doğru dəyişəni istifadə et
+    }
+
+
+}
+
+@{
+    var SonQaliqbalances = new List<decimal>();
+    var SonQaliqnames = new List<string>();
+
+    foreach (System.Data.DataRow row in Model.Rows)
+    {
+        decimal balance = row["SonQaliq"] != DBNull.Value ? Convert.ToDecimal(row["SonQaliq"]) : 0;
+        SonQaliqbalances.Add(balance);
+        SonQaliqnames.Add(row["name"].ToString());
+    }
+
+}
+
+
+@{
+    var initialRows = Model.Rows.Cast<System.Data.DataRow>()
+                    .Where(r => r["Initial_Balance"] != DBNull.Value)
+                    .ToList();
+
+    var debetRows = Model.Rows.Cast<System.Data.DataRow>()
+                    .Where(r => r["Debet"] != DBNull.Value)
+                    .ToList();
+
+    var creditRows = Model.Rows.Cast<System.Data.DataRow>()
+                .Where(r => r["Credit"] != DBNull.Value)
+                .ToList();
+
+    var SonQaliqRows = Model.Rows.Cast<System.Data.DataRow>()
+                .Where(r => r["SonQaliq"] != DBNull.Value)
+                .ToList();
+}
+
+
+@{
+    var type1 = Context.Request.Query["type"].FirstOrDefault() ?? "InitialBalance";
+
+    List<string> exportNames = new List<string>();
+    List<decimal> exportValues = new List<decimal>();
+    decimal exportTotal = 0;
+
+    if (type1 == "InitialBalance")
+    {
+        foreach (var row in initialRows)
+        {
+            exportNames.Add(row["name"].ToString());
+            exportValues.Add(row["Initial_Balance"] != DBNull.Value ? Convert.ToDecimal(row["Initial_Balance"]) : 0);
+        }
+    }
+    else if (type1 == "Debet")
+    {
+        foreach (var row in debetRows)
+        {
+            exportNames.Add(row["name"].ToString());
+            exportValues.Add(row["Debet"] != DBNull.Value ? Convert.ToDecimal(row["Debet"]) : 0);
+        }
+    }
+    else if (type1 == "Credit")
+    {
+        foreach (var row in creditRows)
+        {
+            exportNames.Add(row["name"].ToString());
+            exportValues.Add(row["Credit"] != DBNull.Value ? Convert.ToDecimal(row["Credit"]) : 0);
+        }
+    }
+    else if (type1 == "SonQaliq")
+    {
+        foreach (var row in SonQaliqRows)
+        {
+            exportNames.Add(row["name"].ToString());
+            exportValues.Add(row["SonQaliq"] != DBNull.Value ? Convert.ToDecimal(row["SonQaliq"]) : 0);
+        }
+    }
+
+
+    exportTotal = exportValues.Sum();
+}
 <script>
-    const names = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(names));
-    const balances = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(balances));
-    const totalBalance = @totalBalance; // totalBalance JS-də də mövcud oldu
+    const exportNames = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(exportNames));
+    const exportValues = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(exportValues));
+    const exportTotal = @exportTotal;
+    const currentType = "@type1";
 </script>
+
+
+
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -35,80 +180,169 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <div style="text-align: right; margin: 15px;">
-    <button class="btn btn-danger" onclick="exportDashboardPDF()">PDF-ə Çıxart</button>
-    <button class="btn btn-success" onclick="exportDashboardExcel()">Excel-ə Çıxart</button>
+    <button class="btn btn-danger" onclick="exportDashboardPDF()">Export to PDF</button>
+    <button class="btn btn-success" onclick="exportDashboardExcel()">Export to Excel</button>
 </div>
 
-
 <script>
-        async function exportDashboardPDF() {
+    async function exportDashboardPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'pt', 'a4');
 
-        // Bütün charts-ları saxlayan container
-        const dashboard = document.querySelector('body'); // ya da .Main-Container
+        // Yalnız balans cədvəlini götürək
+        const dashboard = document.querySelector('.balance-container');
         const canvas = await html2canvas(dashboard, { scale: 2 });
-        const imgData = canvas.toDataURL('image/png');
 
+        const imgData = canvas.toDataURL('image/png');
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
         doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         doc.save("Dashboard.pdf");
     }
-
 </script>
-
 <script>
-    function exportDashboardExcel() {
+       function exportDashboardExcel() {
         var wb = XLSX.utils.book_new();
+        var data = [];
 
-        var data = [["Name", "Initial Balance"]];
-
-        for (let i = 0; i < names.length; i++) {
-            data.push([names[i], balances[i]]);
+        if (currentType === "InitialBalance") {
+            data.push(["Name", "Initial Balance"]);
+        } else if (currentType === "Debet") {
+            data.push(["Name", "Debet"]);
+        }
+        else if (currentType === "Credit") {
+            data.push(["Name", "Credit"]);
+        }
+        else if (currentType === "SonQaliq") {
+            data.push(["Name", "SonQaliq"]);
         }
 
-        // Yekun balansı əlavə et
-        data.push(["Yekun", totalBalance]);
+        for (let i = 0; i < exportNames.length; i++) {
+            data.push([exportNames[i], exportValues[i]]);
+        }
+
+        data.push(["Yekun", exportTotal]);
 
         var ws = XLSX.utils.aoa_to_sheet(data);
         XLSX.utils.book_append_sheet(wb, ws, "Dashboard");
         XLSX.writeFile(wb, "Dashboard.xlsx");
     }
 
+
 </script>
+
+
+
+@{
+    // URL-dən type query parametresini oxuyuruq
+    var type = Context.Request.Query["type"].FirstOrDefault() ?? "";
+}
 
 
 
 
 <div class="balance-container">
-    <h2>💰 Bank və Kassa Balansları</h2>
-
-    <table class="custom-table">
-        <thead>
-            <tr>
-
-                <th>Name</th>
-                <th>Initial Balance</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (System.Data.DataRow row in Model.Rows)
-            {
+    @if (type == "InitialBalance")
+    {
+        <h2>💰 Bank və Kassa Balansları</h2>
+        <table class="custom-table">
+            <thead>
                 <tr>
-                    
-                    <td>@row["name"]</td>
-                    <td class="balance">@row["Initial_Balance"]</td>
-
+                    <th>Name</th>
+                    <th>Initial Balance</th>
                 </tr>
-            }
-            <tr class="total-row">
-                <td colspan="2"><strong>Yekun</strong></td>
-                <td class="balance"><strong>@totalBalance</strong></td>
-            </tr>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                @foreach (var row in initialRows)
+                {
+                    <tr>
+                        <td>@row["name"]</td>
+                        <td>@row["Initial_Balance"]</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td><strong>Yekun</strong></td>
+                    <td class="balance"><strong>@totalBalance</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    }
+    else if (type == "Debet")
+    {
+        <h2>💰 Bank və Kassa Çıxışları (Debet)</h2>
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Debet</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in debetRows)
+                {
+                    <tr>
+                        <td>@row["name"]</td>
+                        <td>@row["Debet"]</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td><strong>Yekun</strong></td>
+                    <td class="debet"><strong>@totalDebet</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    }
+    else if(type=="Credit")
+    {
+        <h2>💰 Bank və Kassa Çıxışları</h2>
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Credit</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in creditRows)
+                {
+                    <tr>
+                        <td>@row["name"]</td>
+                        <td>@row["Credit"]</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td><strong>Yekun</strong></td>
+                    <td class="credit"><strong>@totalCredit</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    }
+    else if (type == "SonQaliq")
+    {
+        <h2>💰 Bank və Kassa Çıxışları</h2>
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>SonQaliq</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in SonQaliqRows)
+                {
+                    <tr>
+                        <td>@row["name"]</td>
+                        <td>@row["SonQaliq"]</td>
+                    </tr>
+                }
+                <tr class="total-row">
+                    <td><strong>Yekun</strong></td>
+                    <td class="sonqaliq"><strong>@totalSonQaliq</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    }
 </div>
 
 <style>
@@ -150,30 +384,15 @@
             border-bottom: 1px solid #eaeaea;
         }
 
-        .custom-table tbody tr {
+        .custom-table tbody tr:hover {
+            background: #f1f9ff;
+            transform: scale(1.01);
             transition: all 0.2s ease-in-out;
         }
 
-            .custom-table tbody tr:hover {
-                background: #f1f9ff;
-                transform: scale(1.01);
-            }
 
-    /* Rənglər */
-    .balance {
-        color: #16a085;
+    .total-row td {
         font-weight: bold;
+        background-color: #ecf0f1;
     }
-
-    .credit {
-        color: #2980b9;
-        font-weight: 500;
-    }
-
-    .debet {
-        color: #c0392b;
-        font-weight: 500;
-    }
-
-    /* Yekun sətir */
-    .tot
+</style>
