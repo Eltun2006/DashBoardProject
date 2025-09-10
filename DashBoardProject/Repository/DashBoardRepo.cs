@@ -28,7 +28,7 @@ namespace DashBoardProject.Repository
     
 
             var balances = GetAccountBalance(start, end);
-            var dovriyye = GetDovriyyeBalance(start, end, insuranceID);
+            var dovriyye = GetTurnoverBalance(start, end, insuranceID);
             var material = GetMalMaterialBalance(start, end, DermanID, SerfiyyatID);
 
             return new FullDashBoardModel
@@ -75,7 +75,7 @@ namespace DashBoardProject.Repository
                                     FROM Payment_Accounts pa
                                     INNER JOIN Payments p 
                                         ON pa.Id = p.Debit_Id 
-                                        AND p.Payment_Date BETWEEN :startDate AND :endDate+1 
+                                        AND p.Payment_Date BETWEEN :startDate AND :endDatePlusOne 
                                         AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
                                     GROUP BY pa.Account_Type
                                 )";
@@ -91,7 +91,7 @@ namespace DashBoardProject.Repository
                                     FROM Payment_Accounts pa
                                     INNER JOIN Payments p 
                                         ON pa.Id = p.Credit_Id 
-                                        AND p.Payment_Date BETWEEN :startDate AND :endDate+1
+                                        AND p.Payment_Date BETWEEN :startDate AND :endDatePlusOne
                                         AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
                                     GROUP BY pa.Account_Type
                                 )";
@@ -168,9 +168,9 @@ namespace DashBoardProject.Repository
 
         }
 
-        private Dovriyye_Statistikasi GetDovriyyeBalance(DateTime startDate, DateTime endDate, int? InsuranceID)
+        private TurnoverStatistics GetTurnoverBalance(DateTime startDate, DateTime endDate, int? InsuranceID)
         {
-            var TeskilatUzreSql = String.Format(@"SELECT SUM (CASE WHEN Qrup = 'Icbari_Sigorta' THEN Pasiyent_Sayi ELSE 0 END)
+            var ByOrganizationSql = String.Format(@"SELECT SUM (CASE WHEN Qrup = 'Icbari_Sigorta' THEN Pasiyent_Sayi ELSE 0 END)
               AS Icbari_Sigorta,
            SUM (
               CASE WHEN Qrup = 'Diger_Sigortalar' THEN Pasiyent_Sayi ELSE 0 END)
@@ -286,7 +286,7 @@ namespace DashBoardProject.Repository
 and od.SERVICE_PRICE_INCLUDED=0) sub
         GROUP BY Qrup) final", _InsuranceID, _InsuranceID);
 
-            var XidmetTipiSql = @"SELECT  
+            var ByservicetypeSql = @"SELECT  
                                     'Poliklinik' AS service_type,
                                     SUM(
                                         CASE
@@ -503,7 +503,7 @@ ORDER BY total_amount_sum DESC";
 
             var endDatePlusOne = endDate.AddDays(1);
 
-            var Teskilatuzre = ExecuteQuery(TeskilatUzreSql, reader => new Teskilat_Uzre
+            var Teskilatuzre = ExecuteQuery(ByOrganizationSql, reader => new ByOrganization
             {
                 Icbari_Sigorta = reader.IsDBNull(0) ? 0 : Convert.ToInt32(reader.GetValue(0)),
                 Diger_Sigorta = reader.IsDBNull(1) ? 0 : Convert.ToInt32(reader.GetValue(1)),
@@ -511,7 +511,7 @@ ORDER BY total_amount_sum DESC";
                 Oz_Hesabina = reader.IsDBNull(3) ? 0 : Convert.ToInt32(reader.GetValue(3)),
             }, startDate, endDate, endDatePlusOne );
 
-            var XidmetTipi = ExecuteQuery(XidmetTipiSql, reader =>
+            var XidmetTipi = ExecuteQuery(ByservicetypeSql, reader =>
             {
                 decimal emeliyyat = 0;
                 decimal poliklinik = 0;
@@ -529,7 +529,7 @@ ORDER BY total_amount_sum DESC";
 
                 } while (reader.Read());
 
-                return new Xidmet_Tipi_Uzre
+                return new Byservicetype
                 {
                     Emeliyyat = emeliyyat,
                     Poliklinik = poliklinik
@@ -554,10 +554,10 @@ ORDER BY total_amount_sum DESC";
 
 
 
-            return new Dovriyye_Statistikasi
+            return new TurnoverStatistics
             {
-                TeskilatUzre = Teskilatuzre ?? new Teskilat_Uzre(),
-                XidmetTipi = XidmetTipi ?? new Xidmet_Tipi_Uzre(),
+                TeskilatUzre = Teskilatuzre ?? new ByOrganization(),
+                XidmetTipi = XidmetTipi ?? new Byservicetype(),
                 Xidmet_Categoryasi = xidmetCategoryList,
             };
 
@@ -634,7 +634,7 @@ ORDER BY total_amount_sum DESC";
             return result;
         }
 
-        private Mal_Material_Hereketleri GetMalMaterialBalance(DateTime startDate, DateTime endDate, int? DermanID, int? SerfiyyayID)
+        private Inventory_Movement GetMalMaterialBalance(DateTime startDate, DateTime endDate, int? DermanID, int? SerfiyyayID)
         {
 
             var IlinkQaliqSql = String.Format(@"
@@ -886,17 +886,17 @@ ORDER BY total_amount_sum DESC";
             var Silinme = ExecuteMaterialQuery(SilinmeSql, startDate: startDate, endDatePlusOne: endDatePlusOne);
             var SonQaliq = ExecuteMaterialQuery(SonQaliqSql, endDatePlusOne: endDatePlusOne);
 
-            return new Mal_Material_Hereketleri
+            return new Inventory_Movement
             {
-                IlkinQaliq = IlkinQaliq ?? new Mal_Material(),
-                Medaxil = Medaxil ?? new Mal_Material(),
-                Mexaric = Mexaric ?? new Mal_Material(),
-                Silinme = Silinme ?? new Mal_Material(),
-                SonQaliq = SonQaliq ?? new Mal_Material(),
+                IlkinQaliq = IlkinQaliq ?? new Goods_and_materials(),
+                Medaxil = Medaxil ?? new Goods_and_materials(),
+                Mexaric = Mexaric ?? new Goods_and_materials(),
+                Silinme = Silinme ?? new Goods_and_materials(),
+                SonQaliq = SonQaliq ?? new Goods_and_materials(),
             };
         }   
 
-        private Mal_Material ExecuteMaterialQuery(string sql, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null, int? dermanID = null, int? serfiyyatID = null)
+        private Goods_and_materials ExecuteMaterialQuery(string sql, DateTime? startDate = null, DateTime? endDate = null, DateTime? endDatePlusOne = null, int? dermanID = null, int? serfiyyatID = null)
         {
             var connectionString = _configuration.GetConnectionString("SqlConnection");
 
@@ -922,7 +922,7 @@ ORDER BY total_amount_sum DESC";
 
             using var reader = cmd.ExecuteReader();
 
-            var result = new Mal_Material();
+            var result = new Goods_and_materials();
 
             while (reader.Read())
             {

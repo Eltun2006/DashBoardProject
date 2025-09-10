@@ -141,5 +141,15 @@ namespace DashBoardProject.Repository
             return result;
         }
 
+        //public DataTable DovriyyeBalanceDetails(DateTime startDate, DateTime endDate)
+        //{
+        //    var result1 = new DataTable();
+        //    using (var conn = new Oracle.ManagedDataAccess.Client.OracleConnection(_config.GetConnectionString("SqlConnection")))
+        //    {
+        //        conn.Open();
+        //        var
+        //    }
+
+        //}
     }
 }

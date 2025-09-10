@@ -15,14 +15,14 @@ namespace DashBoardProject.Models
         public MalMulkHereketleri SonQaliq { get; set; }
 
     }
-    public class Teskilat_Uzre
+    public class ByOrganization
     {
         public int Icbari_Sigorta { get; set; }
         public int Diger_Sigorta { get; set; }
         public int Endirimler { get; set; }
         public int Oz_Hesabina { get; set; }
     }
-    public class Xidmet_Tipi_Uzre
+    public class Byservicetype
     {
         public decimal Emeliyyat { get; set; }
         public decimal Poliklinik { get; set; }
@@ -32,25 +32,25 @@ namespace DashBoardProject.Models
         public string CategoryName { get; set; }
         public decimal TotalPrice { get; set; }
     }
-    public class Mal_Material
+    public class Goods_and_materials
     {
         public decimal Derman { get; set; }
         public decimal Serfiyyat { get; set; }
         public decimal Digerleri { get; set; }
     }
-    public class Mal_Material_Hereketleri
+    public class Inventory_Movement
     {
-        public Mal_Material IlkinQaliq { get; set; }
-        public Mal_Material Medaxil { get; set; }
-        public Mal_Material Mexaric { get; set; }
-        public Mal_Material Silinme { get; set; }
-        public Mal_Material SonQaliq { get; set; }
+        public Goods_and_materials IlkinQaliq { get; set; }
+        public Goods_and_materials Medaxil { get; set; }
+        public Goods_and_materials Mexaric { get; set; }
+        public Goods_and_materials Silinme { get; set; }
+        public Goods_and_materials SonQaliq { get; set; }
     }
 
-    public class Dovriyye_Statistikasi
+    public class TurnoverStatistics
     {
-        public Teskilat_Uzre TeskilatUzre { get; set; }
-        public Xidmet_Tipi_Uzre XidmetTipi { get; set; }
+        public ByOrganization TeskilatUzre { get; set; }
+        public Byservicetype XidmetTipi { get; set; }
         public List<Xidmet_Categoryasi> Xidmet_Categoryasi { get; set; }
 
     }
@@ -58,7 +58,7 @@ namespace DashBoardProject.Models
     public class FullDashBoardModel
     {
         public AccountBalance MalMulk { get; set; }
-        public Dovriyye_Statistikasi Dovriyye { get; set; }
-        public Mal_Material_Hereketleri MalMaterialHereketleri { get; set; }
+        public TurnoverStatistics Dovriyye { get; set; }
+        public Inventory_Movement MalMaterialHereketleri { get; set; }
     }
 }
