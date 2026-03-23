@@ -1,6 +1,6 @@
 ﻿using DashBoardProject.Repository;
 using Microsoft.AspNetCore.Mvc;
-using Oracle.ManagedDataAccess.Client;
+
 using System.Data;
 
 namespace DashBoardProject.Controllers

@@ -1,10 +1,12 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
+using Microsoft.Extensions.Configuration;
 
 namespace DashBoardProject.Repository
 {
     public class EtrafliRepository
     {
-        private IConfiguration _config;
+        private readonly IConfiguration _config;
         public EtrafliRepository(IConfiguration configuration)
         {
             _config = configuration;
@@ -13,143 +15,22 @@ namespace DashBoardProject.Repository
         public DataTable EtrafliMetod(DateTime startDate, DateTime endDate)
         {
             var result = new DataTable();
-            using (var conn = new Oracle.ManagedDataAccess.Client.OracleConnection(_config.GetConnectionString("SqlConnection")))
-            {
-                conn.Open();
-                string IlkinQaliqsql = @"
-                SELECT t.name,
-                       SUM(t.Initial_Balance) AS Initial_Balance
-                  FROM (
-                          SELECT pa.name,
-                                 NVL(SUM(-p.Amount), 0) AS Initial_Balance,
-                                 SUM(p.amount) credit,
-                                 0 debet
-                            FROM Payment_Accounts pa
-                                 INNER JOIN Payments p
-                                    ON pa.Id = p.Credit_Id AND p.Payment_Date < :startDate
-                        GROUP BY pa.name
-                        UNION ALL
-                          SELECT pa.name,
-                                 NVL(SUM(p.Amount), 0) AS Initial_Balance,
-                                 0 credit,
-                                 SUM(p.amount) debet
-                            FROM Payment_Accounts pa
-                                 INNER JOIN Payments p
-                                    ON pa.Id = p.Debit_Id AND p.Payment_Date < :startDate
-                        GROUP BY pa.name
-                      ) t
-              GROUP BY t.name
-              ORDER BY t.name";
-                using (var cmd = new Oracle.ManagedDataAccess.Client.OracleCommand(IlkinQaliqsql, conn))
-                {
-                    cmd.Parameters.Add(new Oracle.ManagedDataAccess.Client.OracleParameter("startDate", startDate));
-                    using (var adapter = new Oracle.ManagedDataAccess.Client.OracleDataAdapter(cmd))
-                    {
-                        adapter.Fill(result);
-                    }
-                }
 
-                var Medaxilsql = @"  SELECT t.name,
-                                           SUM(t.Debet) AS Debet
-                                    FROM (
-                                        SELECT pa.name,
-                                               NVL(SUM(p.Amount), 0) AS Debet,
-                                               0 AS Credit   
-                                        FROM Payment_Accounts pa
-                                        INNER JOIN Payments p
-                                            ON pa.Id = p.Debit_Id
-                                           AND p.Payment_Date BETWEEN :startDate AND :endDate + 1
-                                           AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
-                                        GROUP BY pa.name
-                                    ) t
-                                    GROUP BY t.name
-                                    ORDER BY t.name";
+            // Define columns
+            result.Columns.Add("name", typeof(string));
+            result.Columns.Add("Initial_Balance", typeof(decimal));
+            result.Columns.Add("Debet", typeof(decimal));
+            result.Columns.Add("Credit", typeof(decimal));
+            result.Columns.Add("SonQaliq", typeof(decimal));
 
-                using (var cmd = new Oracle.ManagedDataAccess.Client.OracleCommand(Medaxilsql, conn))
-                {
-                    cmd.Parameters.Add(new Oracle.ManagedDataAccess.Client.OracleParameter("startDate", startDate));
-                    cmd.Parameters.Add(new Oracle.ManagedDataAccess.Client.OracleParameter("endDate", endDate));
+            // Add mock rows
+            result.Rows.Add("Kassa", 3200.00m, 4100.50m, 1500.00m, 5800.50m);
+            result.Rows.Add("Bank", 15500.50m, 8400.00m, 3200.25m, 20700.25m);
+            result.Rows.Add("Əsas vəsaitlər", 45000.00m, 0.00m, 5000.00m, 40000.00m);
+            result.Rows.Add("Ehtiyatlar", 12000.00m, 2500.00m, 3000.00m, 11500.00m);
+            result.Rows.Add("Digər qısamüddətli aktivlər", 850.00m, 300.00m, 100.00m, 1050.00m);
 
-                    using (var adapter = new Oracle.ManagedDataAccess.Client.OracleDataAdapter(cmd))
-                    {
-                        adapter.Fill(result);
-                    }
-                }
-
-
-                var Mexaricsql = @"SELECT t.name,
-                                           SUM(t.Credit) AS Credit
-                                    FROM (
-                                        SELECT pa.name,
-                                               NVL(SUM(p.Amount), 0) AS Credit,
-                                               SUM(p.Amount) AS Debet  -- Debet lazımdırsa saxla, yoxsa sil
-                                        FROM Payment_Accounts pa
-                                        INNER JOIN Payments p
-                                            ON pa.Id = p.Credit_Id
-                                           AND p.Payment_Date BETWEEN :startDate AND :endDate + 1
-                                           AND p.RELATION_DOCUMENT_TYPE_CODE <> 18
-                                        GROUP BY pa.name
-                                    ) t
-                                    GROUP BY t.name
-                                    ORDER BY t.name";
-
-                using (var cmd = new Oracle.ManagedDataAccess.Client.OracleCommand(Mexaricsql, conn))
-                {
-                    cmd.Parameters.Add(new Oracle.ManagedDataAccess.Client.OracleParameter("startDate", startDate));
-                    cmd.Parameters.Add(new Oracle.ManagedDataAccess.Client.OracleParameter("endDate", endDate));
-
-                    using (var adapter = new Oracle.ManagedDataAccess.Client.OracleDataAdapter(cmd))
-                    {
-                        adapter.Fill(result);
-                    }
-                }
-
-                var SonQaliqsql = @"  SELECT t.name,
-                                             SUM(t.SonQaliq) AS SonQaliq
-                                        FROM (
-                                                SELECT pa.name,
-                                                       NVL(SUM(-p.Amount), 0) AS SonQaliq,
-                                                       SUM(p.amount) credit,
-                                                       0 debet
-                                                  FROM Payment_Accounts pa
-                                                       INNER JOIN Payments p
-                                                          ON pa.Id = p.Credit_Id AND p.Payment_Date < :endDate+1
-                                              GROUP BY pa.name
-                                              UNION ALL
-                                                SELECT pa.name,
-                                                       NVL(SUM(p.Amount), 0) AS SonQaliq,
-                                                       0 credit,
-                                                       SUM(p.amount) debet
-                                                  FROM Payment_Accounts pa
-                                                       INNER JOIN Payments p
-                                                          ON pa.Id = p.Debit_Id AND p.Payment_Date < :endDate+1
-                                              GROUP BY pa.name
-                                            ) t
-                                    GROUP BY t.name
-                                    ORDER BY t.name";
-
-
-                using (var cmd = new Oracle.ManagedDataAccess.Client.OracleCommand(SonQaliqsql, conn))
-                {
-                    cmd.Parameters.Add(new Oracle.ManagedDataAccess.Client.OracleParameter("endDate", endDate));
-                    using (var adapter = new Oracle.ManagedDataAccess.Client.OracleDataAdapter(cmd))
-                    {
-                        adapter.Fill(result);
-                    }
-                }
-            }
             return result;
         }
-
-        //public DataTable DovriyyeBalanceDetails(DateTime startDate, DateTime endDate)
-        //{
-        //    var result1 = new DataTable();
-        //    using (var conn = new Oracle.ManagedDataAccess.Client.OracleConnection(_config.GetConnectionString("SqlConnection")))
-        //    {
-        //        conn.Open();
-        //        var
-        //    }
-
-        //}
     }
 }

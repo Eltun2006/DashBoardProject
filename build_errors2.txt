@@ -1,0 +1,17 @@
+﻿C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018: The "DiscoverPrecompressedAssets" task failed unexpectedly. [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018: System.ArgumentException: An item with the same key has already been added. Key: c:\Users\user\C#\DashBoardProject\DashBoardProject\wwwroot\css\site.css [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at System.Collections.Generic.Dictionary`2.TryInsert(TKey key, TValue value, InsertionBehavior behavior) [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at System.Collections.Generic.Dictionary`2.Add(TKey key, TValue value) [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at System.Linq.Enumerable.SpanToDictionary[TSource,TKey](ReadOnlySpan`1 source, Func`2 keySelector, IEqualityComparer`1 comparer) [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at System.Linq.Enumerable.ToDictionary[TSource,TKey](IEnumerable`1 source, Func`2 keySelector, IEqualityComparer`1 comparer) [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at Microsoft.AspNetCore.StaticWebAssets.Tasks.DiscoverPrecompressedAssets.Execute() [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at Microsoft.Build.BackEnd.TaskExecutionHost.Execute() [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+C:\Program Files\dotnet\sdk\9.0.300\Sdks\Microsoft.NET.Sdk.StaticWebAssets\targets\Microsoft.NET.Sdk.StaticWebAssets.Compression.targets(289,5): error MSB4018:    at Microsoft.Build.BackEnd.TaskBuilder.ExecuteInstantiatedTask(TaskExecutionHost taskExecutionHost, TaskLoggingContext taskLoggingContext, TaskHost taskHost, ItemBucket bucket, TaskExecutionMode howToExecuteTask) [c:\Users\user\C#\DashBoardProject\DashBoardProject\DashBoardProject.csproj]
+
+Build FAILED.
+    2 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.60
+
+Workload updates are available. Run `dotnet workload list` for more information.
