@@ -336,35 +336,35 @@
             const sonQaliqBank = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.SonQaliq?.Bank ?? 0));
             const sonQaliqKassa = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMulk?.SonQaliq?.Kassa ?? 0));
 
-            const Icbari_Sigorta = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Icbari_Sigorta ?? 0));
-            const Diger_Sigorta = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Diger_Sigorta ?? 0));
-            const EndirimLer = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Endirimler ?? 0));
-            const Oz_Hesabina = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Oz_Hesabina ?? 0));
+            const Proqram_Teminati = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Proqram_Teminati ?? 0));
+            const Konsaltinq_Xidmetleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Konsaltinq_Xidmetleri ?? 0));
+            const Texniki_Destek = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Texniki_Destek ?? 0));
+            const Abuna_Yazilislari = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.TeskilatUzre?.Abuna_Yazilislari ?? 0));
 
-            const Xidmet_tipi_Emeliyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.XidmetTipi?.Emeliyyat ?? 0));
-            const Xidmet_tipi_Poliklinik = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.XidmetTipi?.Poliklinik ?? 0));
+            const Xidmet_tipi_Layihe = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.XidmetTipi?.Layihe_Isleri ?? 0));
+            const Xidmet_tipi_Autsorsinq = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Dovriyye?.XidmetTipi?.Autsorsinq ?? 0));
 
             const xidmetCategoryLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(@xidmetLabels));
             const xidmetCategoryData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(@xidmetData));
 
-            const IlkinQaliqDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Derman ?? 0));
-            const IlkinQaliqSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Serfiyyat ?? 0));
+            const IlkinQaliqLaptops = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Laptops ?? 0));
+            const IlkinQaliqServerler = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Serverler ?? 0));
             const IlkinQaliqDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.IlkinQaliq?.Digerleri ?? 0));
 
-            const MedaxilDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Derman ?? 0));
-            const MedaxilSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Serfiyyat ?? 0));
+            const MedaxilLaptops = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Laptops ?? 0));
+            const MedaxilServerler = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Serverler ?? 0));
             const MedaxilDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Medaxil?.Digerleri ?? 0));
 
-            const MexaricDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Derman ?? 0));
-            const MexaricSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Serfiyyat ?? 0));
+            const MexaricLaptops = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Laptops ?? 0));
+            const MexaricServerler = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Serverler ?? 0));
             const MexaricDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Mexaric?.Digerleri ?? 0));
 
-            const SilinmeDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Derman ?? 0));
-            const SilinmeSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Serfiyyat ?? 0));
+            const SilinmeLaptops = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Laptops ?? 0));
+            const SilinmeServerler = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Serverler ?? 0));
             const SilinmeDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.Silinme?.Digerleri ?? 0));
 
-            const SonQaliqDerman = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Derman ?? 0));
-            const SonQaliqSerfiyyat = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Serfiyyat ?? 0));
+            const SonQaliqLaptops = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Laptops ?? 0));
+            const SonQaliqServerler = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Serverler ?? 0));
             const SonQaliqDigerleri = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MalMaterialHereketleri?.SonQaliq?.Digerleri ?? 0));
 
             function animateValue(id, start, end, duration) {
@@ -466,15 +466,15 @@
             createChart('sonqaliqChart', 'sonqaliqValue', 'sonqaliqLegend', ['Bank', 'Kassa'], [sonQaliqBank, sonQaliqKassa], commonColors);
 
             createChart('SigortaChart', 'SigortValue', 'SigortaLegend',
-                ['İcbari Sigorta', 'Digər Sığorta', 'Endirimlər', 'Öz Hesabına'],
-                [Icbari_Sigorta, Diger_Sigorta, EndirimLer, Oz_Hesabina],
+                ['Proqram Təminatı', 'Konsaltinq Xidmətləri', 'Texniki Dəstək', 'Abunə Yazılışları'],
+                [Proqram_Teminati, Konsaltinq_Xidmetleri, Texniki_Destek, Abuna_Yazilislari],
                 sigortaColors
             );
 
 
             createChart('XidmetChart', 'XidmetValue', 'XidmetLegend',
-                ['Emeliyyat', 'Poliklinik'],
-                [Xidmet_tipi_Emeliyyat , Xidmet_tipi_Poliklinik],
+                ['Layihə İşləri', 'Autsorsinq'],
+                [Xidmet_tipi_Layihe , Xidmet_tipi_Autsorsinq],
                 commonColors
             );
 
@@ -487,32 +487,32 @@
             );
 
             createChart('MaterialChart', 'MaterialValue', 'MaterialLegend',
-                ['Derman', 'Serfiyyat', 'Digerleri'],
-                [IlkinQaliqDerman, IlkinQaliqSerfiyyat, IlkinQaliqDigerleri],
+                ['Laptops', 'Serverler', 'Digerleri'],
+                [IlkinQaliqLaptops, IlkinQaliqServerler, IlkinQaliqDigerleri],
                 materialColors
             );
 
             createChart('MedaxilChart', 'MedaxilValue', 'MedaxilLegend',
-                ['Derman', 'Serfiyyat', 'Digerleri'],
-                [MedaxilDerman, MedaxilSerfiyyat, MedaxilDigerleri],
+                ['Laptops', 'Serverler', 'Digerleri'],
+                [MedaxilLaptops, MedaxilServerler, MedaxilDigerleri],
                 materialColors
             );
 
             createChart('MexaricChart', 'MexaricValue', 'MexaricLegend',
-                ['Derman', 'Serfiyyat', 'Digerleri'],
-                [MexaricDerman, MexaricSerfiyyat, MexaricDigerleri],
+                ['Laptops', 'Serverler', 'Digerleri'],
+                [MexaricLaptops, MexaricServerler, MexaricDigerleri],
                 materialColors
             );
 
             createChart('QaliqChart', 'QaliqValue', 'QaliqLegend',
-                ['Derman', 'Serfiyyat', 'Digerleri'],
-                [SonQaliqDerman, SonQaliqSerfiyyat, SonQaliqDigerleri],
+                ['Laptops', 'Serverler', 'Digerleri'],
+                [SonQaliqLaptops, SonQaliqServerler, SonQaliqDigerleri],
                 materialColors
             );
 
             createChart('SilinmeChart', 'SilinmeValue', 'SilinmeLegend',
-                ['Derman', 'Serfiyyat', 'Digerleri'],
-                [SilinmeDerman, SilinmeSerfiyyat, SilinmeDigerleri],
+                ['Laptops', 'Serverler', 'Digerleri'],
+                [SilinmeLaptops, SilinmeServerler, SilinmeDigerleri],
                 materialColors
             );
 

@@ -9,28 +9,28 @@ namespace DashBoardProject.Repository
     {
         private readonly IConfiguration _configuration;
         // Mocking behavior, we can keep the fields even if not used, or remove them.
-        private readonly int _InsuranceID;
-        private readonly int _DermanID;
-        private readonly int _SerfiyyatID;
+        private readonly int _SoftwareID;
+        private readonly int _AssetID;
+        private readonly int _ExpenseID;
         private readonly int _DepartmentID;
 
         public DashBoardRepo(IConfiguration configuration)
         {
             _configuration = configuration;
-            _InsuranceID = int.TryParse(_configuration["AppSettings:Insurance_ID"], out var ins) ? ins : 0;
-            _DermanID = int.TryParse(_configuration["AppSettings:Derman_ID"], out var der) ? der : 0;
-            _SerfiyyatID = int.TryParse(_configuration["AppSettings:Serfiyyat_ID"], out var ser) ? ser : 0;
+            _SoftwareID = int.TryParse(_configuration["AppSettings:Software_ID"], out var sw) ? sw : 0;
+            _AssetID = int.TryParse(_configuration["AppSettings:Asset_ID"], out var ast) ? ast : 0;
+            _ExpenseID = int.TryParse(_configuration["AppSettings:Expense_ID"], out var exp) ? exp : 0;
             _DepartmentID = int.TryParse(_configuration["AppSettings:Department_ID"], out var dep) ? dep : 0;
         }
 
-        public FullDashBoardModel FullDashBoardMetod(DateTime? startDate = null, DateTime? endDate = null, int? insuranceID = null, int? DermanID = null, int? SerfiyyatID = null)
+        public FullDashBoardModel FullDashBoardMetod(DateTime? startDate = null, DateTime? endDate = null, int? softwareID = null, int? assetID = null, int? expenseID = null)
         {
             var start = startDate ?? DateTime.Today.AddMonths(-1);
             var end = endDate ?? DateTime.Today;
     
             var balances = GetAccountBalance(start, end);
-            var dovriyye = GetTurnoverBalance(start, end, insuranceID);
-            var material = GetMalMaterialBalance(start, end, DermanID, SerfiyyatID);
+            var dovriyye = GetTurnoverBalance(start, end, softwareID);
+            var material = GetMalMaterialBalance(start, end, assetID, expenseID);
 
             return new FullDashBoardModel
             {
@@ -42,55 +42,55 @@ namespace DashBoardProject.Repository
 
         private AccountBalance GetAccountBalance(DateTime startDate, DateTime endDate)
         {
-            // Providing realistic mock mock data
+            // IT Company Financials
             return new AccountBalance
             {
-                IlkinQaliq = new MalMulkHereketleri { Bank = 15500.50m, Kassa = 3200.00m },
-                Medaxil = new MalMulkHereketleri { Bank = 8400.00m, Kassa = 4100.50m },
-                Mexaric = new MalMulkHereketleri { Bank = 3200.25m, Kassa = 1500.00m },
-                SonQaliq = new MalMulkHereketleri { Bank = 20700.25m, Kassa = 5800.50m }
+                IlkinQaliq = new MalMulkHereketleri { Bank = 155000.50m, Kassa = 12000.00m },
+                Medaxil = new MalMulkHereketleri { Bank = 84000.00m, Kassa = 41000.50m },
+                Mexaric = new MalMulkHereketleri { Bank = 32000.25m, Kassa = 15000.00m },
+                SonQaliq = new MalMulkHereketleri { Bank = 207000.25m, Kassa = 38000.50m }
             };
         }
 
-        private TurnoverStatistics GetTurnoverBalance(DateTime startDate, DateTime endDate, int? InsuranceID)
+        private TurnoverStatistics GetTurnoverBalance(DateTime startDate, DateTime endDate, int? softwareID)
         {
-            // Providing realistic mock mock data
+            // IT Company Revenue Breakdown
             return new TurnoverStatistics
             {
                 TeskilatUzre = new ByOrganization 
                 {
-                    Icbari_Sigorta = 450,
-                    Diger_Sigorta = 120,
-                    Endirimler = 45,
-                    Oz_Hesabina = 680
+                    Proqram_Teminati = 1200,
+                    Konsaltinq_Xidmetleri = 450,
+                    Texniki_Destek = 300,
+                    Abuna_Yazilislari = 850
                 },
                 XidmetTipi = new Byservicetype
                 {
-                    Emeliyyat = 45000.00m,
-                    Poliklinik = 28000.50m
+                    Layihe_Isleri = 145000.00m,
+                    Autsorsinq = 98000.50m
                 },
                 Xidmet_Categoryasi = new List<Xidmet_Categoryasi>
                 {
-                    new Xidmet_Categoryasi { CategoryName = "Kardiologiya", TotalPrice = 15000.00m },
-                    new Xidmet_Categoryasi { CategoryName = "Nevrologiya", TotalPrice = 12500.00m },
-                    new Xidmet_Categoryasi { CategoryName = "Cərrahiyyə", TotalPrice = 25000.00m },
-                    new Xidmet_Categoryasi { CategoryName = "Terapiya", TotalPrice = 8500.00m },
-                    new Xidmet_Categoryasi { CategoryName = "Oftalmologiya", TotalPrice = 6400.00m },
-                    new Xidmet_Categoryasi { CategoryName = "Digərləri", TotalPrice = 5600.50m }
+                    new Xidmet_Categoryasi { CategoryName = "Veb İnkişaf", TotalPrice = 65000.00m },
+                    new Xidmet_Categoryasi { CategoryName = "Bulud İnfrastrukturu", TotalPrice = 42500.00m },
+                    new Xidmet_Categoryasi { CategoryName = "Mobil Tətbiqlər", TotalPrice = 55000.00m },
+                    new Xidmet_Categoryasi { CategoryName = "Süni İntellekt", TotalPrice = 28500.00m },
+                    new Xidmet_Categoryasi { CategoryName = "Kiber Təhlükəsizlik", TotalPrice = 36400.00m },
+                    new Xidmet_Categoryasi { CategoryName = "UI/UX Dizayn", TotalPrice = 15600.50m }
                 }
             };
         }
 
-        private Inventory_Movement GetMalMaterialBalance(DateTime startDate, DateTime endDate, int? DermanID, int? SerfiyyatID)
+        private Inventory_Movement GetMalMaterialBalance(DateTime startDate, DateTime endDate, int? assetID, int? expenseID)
         {
-            // Providing realistic mock mock data
+            // IT Asset Management
             return new Inventory_Movement
             {
-                IlkinQaliq = new Goods_and_materials { Derman = 12500.00m, Serfiyyat = 8400.00m, Digerleri = 1200.00m },
-                Medaxil = new Goods_and_materials { Derman = 4500.00m, Serfiyyat = 3200.00m, Digerleri = 300.00m },
-                Mexaric = new Goods_and_materials { Derman = 5200.00m, Serfiyyat = 4100.00m, Digerleri = 450.00m },
-                Silinme = new Goods_and_materials { Derman = 150.00m, Serfiyyat = 80.00m, Digerleri = 0.00m },
-                SonQaliq = new Goods_and_materials { Derman = 11650.00m, Serfiyyat = 7420.00m, Digerleri = 1050.00m }
+                IlkinQaliq = new Goods_and_materials { Laptops = 45000.00m, Serverler = 84000.00m, Digerleri = 12000.00m },
+                Medaxil = new Goods_and_materials { Laptops = 12000.00m, Serverler = 32000.00m, Digerleri = 3000.00m },
+                Mexaric = new Goods_and_materials { Laptops = 8200.00m, Serverler = 4100.00m, Digerleri = 4500.00m },
+                Silinme = new Goods_and_materials { Laptops = 500.00m, Serverler = 0.00m, Digerleri = 150.00m },
+                SonQaliq = new Goods_and_materials { Laptops = 48300.00m, Serverler = 111900.00m, Digerleri = 10350.00m }
             };
         }
     }

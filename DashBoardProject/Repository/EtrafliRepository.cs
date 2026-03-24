@@ -23,12 +23,12 @@ namespace DashBoardProject.Repository
             result.Columns.Add("Credit", typeof(decimal));
             result.Columns.Add("SonQaliq", typeof(decimal));
 
-            // Add mock rows
-            result.Rows.Add("Kassa", 3200.00m, 4100.50m, 1500.00m, 5800.50m);
-            result.Rows.Add("Bank", 15500.50m, 8400.00m, 3200.25m, 20700.25m);
-            result.Rows.Add("Əsas vəsaitlər", 45000.00m, 0.00m, 5000.00m, 40000.00m);
-            result.Rows.Add("Ehtiyatlar", 12000.00m, 2500.00m, 3000.00m, 11500.00m);
-            result.Rows.Add("Digər qısamüddətli aktivlər", 850.00m, 300.00m, 100.00m, 1050.00m);
+            // Add mock rows for IT Company
+            result.Rows.Add("Kassa", 12000.00m, 41000.50m, 15000.00m, 38000.50m);
+            result.Rows.Add("Bank Hesabı", 155000.50m, 84000.00m, 32000.25m, 207000.25m);
+            result.Rows.Add("Server İnfrastrukturu", 84000.00m, 32000.00m, 4100.00m, 111900.00m);
+            result.Rows.Add("Şəbəkə Avadanlıqları", 12000.00m, 3000.00m, 4500.00m, 10500.00m);
+            result.Rows.Add("Lisenziyalar və Proqramlar", 45000.00m, 12000.00m, 8700.00m, 48300.00m);
 
             return result;
         }

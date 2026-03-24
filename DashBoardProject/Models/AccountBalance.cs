@@ -1,4 +1,4 @@
-﻿using System.Reflection.Metadata.Ecma335;
+﻿using System.Collections.Generic;
 
 namespace DashBoardProject.Models
 {
@@ -13,19 +13,18 @@ namespace DashBoardProject.Models
         public MalMulkHereketleri Medaxil { get; set; }
         public MalMulkHereketleri Mexaric { get; set; }
         public MalMulkHereketleri SonQaliq { get; set; }
-
     }
     public class ByOrganization
     {
-        public int Icbari_Sigorta { get; set; }
-        public int Diger_Sigorta { get; set; }
-        public int Endirimler { get; set; }
-        public int Oz_Hesabina { get; set; }
+        public int Proqram_Teminati { get; set; }
+        public int Konsaltinq_Xidmetleri { get; set; }
+        public int Texniki_Destek { get; set; }
+        public int Abuna_Yazilislari { get; set; }
     }
     public class Byservicetype
     {
-        public decimal Emeliyyat { get; set; }
-        public decimal Poliklinik { get; set; }
+        public decimal Layihe_Isleri { get; set; }
+        public decimal Autsorsinq { get; set; }
     }
     public class Xidmet_Categoryasi
     {
@@ -34,8 +33,8 @@ namespace DashBoardProject.Models
     }
     public class Goods_and_materials
     {
-        public decimal Derman { get; set; }
-        public decimal Serfiyyat { get; set; }
+        public decimal Laptops { get; set; }
+        public decimal Serverler { get; set; }
         public decimal Digerleri { get; set; }
     }
     public class Inventory_Movement
@@ -52,7 +51,6 @@ namespace DashBoardProject.Models
         public ByOrganization TeskilatUzre { get; set; }
         public Byservicetype XidmetTipi { get; set; }
         public List<Xidmet_Categoryasi> Xidmet_Categoryasi { get; set; }
-
     }
 
     public class FullDashBoardModel
